@@ -257,12 +257,11 @@ class FlowChatbot:
         return {"tipo": "texto", "contenido": promptUsuario}
 
     def ejecutar(
-        self, prompt: Any, base: Any, config: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, prompt: Any, base: Any, config = None
+    ):
         """Ejecuta el grafo con un prompt y base dados."""
-        prompt_normalizado = self.preparar_prompt(prompt)
         respuesta = self.grafo.invoke(
-            {"prompt": prompt_normalizado, "base": base}, config=config
+            {"prompt": prompt, "base": base}, config=config
         )
         return respuesta.get("output", {})
 
