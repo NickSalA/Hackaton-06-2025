@@ -1,8 +1,18 @@
 "use client";
 import { signIn, signOut, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export default function AuthButtons() {
   const { data: session } = useSession();
+  const router = useRouter();
+
+  const handleLogin = () => {
+    if (session) {
+      router.push("/panel");
+    } else {
+      signIn("github", { prompt: "login" });
+    }
+  };
 
   return (
     <div>
@@ -17,13 +27,19 @@ export default function AuthButtons() {
           >
             Cerrar sesión
           </button>
+          <button
+            onClick={handleLogin}
+            className="ml-2 px-4 py-2 bg-[#10a37f] text-white rounded hover:bg-[#0e8c6c] cursor-pointer"
+          >
+            Ir al panel
+          </button>
         </>
       ) : (
         <button
-          onClick={() => signIn("github", { prompt: "login" })}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer"
+          onClick={handleLogin}
+          className="px-4 py-2 bg-[#10a37f] text-white rounded hover:bg-[#0e8c6c] cursor-pointer"
         >
-          Log in
+          Iniciar sesión
         </button>
       )}
     </div>
