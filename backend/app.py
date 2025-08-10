@@ -11,6 +11,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.runnables.config import RunnableConfig
 import backend.util.util_audio as ua
 import uuid
+from backend.util import util_llm
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -34,7 +35,6 @@ def chat():
     # 1. Recibe los datos como JSON
     datos = request.get_json()
     promptUsuario = util_app.obtener_prompt(datos)
-    usarBase = datos.get("usar_base")
     tipo = promptUsuario.get("tipo")
     contenido = datos.get("prompt", {}).get("contenido", "")
     if tipo == "audio":
@@ -53,3 +53,20 @@ def chat():
         return jsonify({"error": f"Error al procesar la solicitud. {str(e)}"}), 500
     print("DEBUG ▶︎ Salida del grafo:", respuestaModelo)
     return jsonify(respuestaModelo)
+
+@app.route("/audio", methods=["POST"])
+def audio():
+    try:
+        datos = request.get_json()
+        prompt = util_app.obtener_prompt(datos)
+        lan: str = ua.detectar_lenguaje(prompt, util_llm.obtenerModeloModerno())
+        audio_base64: str | None = ua.texto_a_voz(prompt, voice=lan)
+
+        if audio_base64 is None:
+            return jsonify({"error": "No se pudo sintetizar el texto a voz"}), 500
+
+        return jsonify({"contenido": "audio", "valor": audio_base64})
+    except Exception as e:
+        return jsonify({"error": f"Error interno del servidor: {str(e)}"}), 500
+    
+    
