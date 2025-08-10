@@ -77,5 +77,8 @@ def audio():
         return jsonify({"contenido": "audio", "valor": audio_base64})
     except Exception as e:
         return jsonify({"error": f"Error interno del servidor: {str(e)}"}), 500
-    
-    
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
