@@ -289,9 +289,11 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
                 <div
                   className="flex-1 px-4 py-2 rounded-2xl shadow-md text-sm whitespace-pre-line transition-all duration-200 bg-[#10a37f]/10 text-[#10a37f] rounded-bl-md border border-[#10a37f]/30"
                 >
-                  {welcomeMessage
-                    ? welcomeMessage
-                    : <>Welcome to the lesson chat!<br />Type your first question or message to start interacting with the assistant.</>}
+                  {welcomeMessage === null
+                    ? <span className="opacity-60 animate-pulse">Cargando...</span>
+                    : (welcomeMessage
+                        ? welcomeMessage
+                        : <>Welcome to the lesson chat!<br />Type your first question or message to start interacting with the assistant.</>)}
                 </div>
               </div>
             </div>

@@ -27,7 +27,7 @@ const Navbar = React.memo(function Navbar() {
     <nav className="w-full flex items-center justify-between px-8 py-4 bg-[#202123] shadow-lg transition-colors duration-300 sticky top-0 z-50">
       <div className="flex items-center gap-4">
         <Link href="/" className="text-2xl font-bold text-white tracking-tight">
-          AI Teacher
+          ProfAI
         </Link>
         {/* Aquí puedes agregar más links o íconos */}
       </div>
