@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import type { Lesson } from "../../data/lessons";
+import type { Lesson } from "@prisma/client";
 
 
 interface LessonCardProps {
@@ -26,7 +26,7 @@ const LessonCard: React.FC<LessonCardProps> = ({ lesson, number, onClick, enable
       </div>
     )}
     <h2 className="text-xl font-bold text-white mb-2 ml-2">{lesson.title}</h2>
-    <p className="text-gray-300 mb-1 ml-2">{lesson.description}</p>
+  <p className="text-gray-300 mb-1 ml-2">{lesson.description ?? ""}</p>
   </div>
 );
 
