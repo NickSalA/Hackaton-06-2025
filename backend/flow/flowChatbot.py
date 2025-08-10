@@ -26,6 +26,8 @@ from backend.agent.AgenteDeResumen import AgenteDeResumen
 # Agente de Supervisión
 from backend.agent.AgenteDeSupervision import AgenteDeSupervision
 
+from backend.agent.AgenteDeEvaluacion import AgenteDeEvaluacion
+
 logger = logging.getLogger(__name__)
 
 
@@ -119,6 +121,7 @@ class FlowChatbot:
 
         self.agenteDeResumen = AgenteDeResumen(llm=obtenerModelo())
         self.AgenteDeSupervision = AgenteDeSupervision(llm=obtenerModelo())
+        self.agenteDeEvaluacion = AgenteDeEvaluacion(llm=obtenerModelo())
 
         # --- Construcción del grafo ---
         self._construir_grafo()
@@ -197,6 +200,24 @@ class FlowChatbot:
             output["output"]["respuesta"] = resumen
             return output
 
+        def node_a8_agenteDeEvaluacion(state: Dict[str, Any]) -> Dict[str, Any]:
+        # recibe la respuesta del chatbot y decide si está listo
+            output = dict(state)
+            respuesta = state["output"]["respuesta"]
+            evaluacion = self.agenteDeEvaluacion.evaluar(respuesta)
+            output["evaluacion"] = evaluacion
+            return output
+
+        def node_a9_generarCuestionario(state: Dict[str, Any]) -> Dict[str, Any]:
+            # si el estudiante está listo, genera preguntas y las añade al output
+            output = dict(state)
+            leccion = state["base"]  # la lección usada como KB
+            preguntas = self.agenteDeEvaluacion.generar_cuestionario(leccion)
+            output["output"] = {
+                "respuesta": state["output"]["respuesta"],
+                "cuestionario": preguntas
+            }
+            return output
         # ---- Wiring ----
         constructor.add_node("nodo_a5_agenteDeSupervision", nodo_a5_agenteDeSupervision)
         constructor.add_node("node_a1_agenteDeContexto", node_a1_agenteDeContexto)
