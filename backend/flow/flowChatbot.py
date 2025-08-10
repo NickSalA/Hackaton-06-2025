@@ -47,7 +47,7 @@ class FlowChatbot:
 
         # --- Instancias de agentes ---
         self.agenteDeContexto = AgenteDeContexto(
-            llm=obtenerModelo(temperature=0.2),
+            llm=obtenerModelo(),
             condiciones=(
                 """
                 Como mínimo debe cumplirse TODAS estas condiciones a la vez:
@@ -62,7 +62,7 @@ class FlowChatbot:
         )
 
         self.agenteDeMemoriaLargoPlazo = AgenteDeMemoriaLargoPlazo(
-            llm=obtenerModelo(temperature=0.2),
+            llm=obtenerModelo(),
             condiciones=(
                 """
                 - El nombre del usuario
@@ -104,7 +104,7 @@ class FlowChatbot:
         )
 
         self.agenteDeAnalisis = AgenteDeAnalisis(
-            llm=obtenerModelo(temperature=0.2),
+            llm=obtenerModelo(),
             descripcion=(
                 """
                 Para un texto, si hay informacion que se contradicen entre sí
@@ -118,7 +118,7 @@ class FlowChatbot:
         )
 
         self.agenteDeResumen = AgenteDeResumen(llm=obtenerModelo())
-        self.AgenteDeSupervision = AgenteDeSupervision(llm=obtenerModelo(temperature=0))
+        self.AgenteDeSupervision = AgenteDeSupervision(llm=obtenerModelo())
 
         # --- Construcción del grafo ---
         self._construir_grafo()

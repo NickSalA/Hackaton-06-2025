@@ -106,7 +106,6 @@ def detectar_lenguaje(prompt, llm) -> str:
                 {"role": "system", "content": system_msg},
                 {"role": "user", "content": prompt},
             ],
-            temperature=0.0,
             max_tokens=10,
         )
         return response.choices[0].message.content.strip()
