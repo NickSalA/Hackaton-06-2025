@@ -201,7 +201,7 @@ class FlowChatbot:
             return output
 
         def node_a8_agenteDeEvaluacion(state: Dict[str, Any]) -> Dict[str, Any]:
-        # recibe la respuesta del chatbot y decide si está listo
+            # recibe la respuesta del chatbot y decide si está listo
             output = dict(state)
             respuesta = state["output"]["respuesta"]
             evaluacion = self.agenteDeEvaluacion.evaluar(respuesta)
@@ -215,9 +215,10 @@ class FlowChatbot:
             preguntas = self.agenteDeEvaluacion.generar_cuestionario(leccion)
             output["output"] = {
                 "respuesta": state["output"]["respuesta"],
-                "cuestionario": preguntas
+                "cuestionario": preguntas,
             }
             return output
+
         # ---- Wiring ----
         constructor.add_node("nodo_a5_agenteDeSupervision", nodo_a5_agenteDeSupervision)
         constructor.add_node("node_a1_agenteDeContexto", node_a1_agenteDeContexto)
@@ -230,6 +231,8 @@ class FlowChatbot:
         )
         constructor.add_node("node_a6_agenteDeChatbot", node_a6_agenteDeChatbot)
         constructor.add_node("node_a7_agenteDeResumen", node_a7_agenteDeResumen)
+        constructor.add_node("node_a8_agenteDeEvaluacion", node_a8_agenteDeEvaluacion)
+        constructor.add_node("node_a9_generarCuestionario", node_a9_generarCuestionario)
 
         constructor.set_entry_point("node_a1_agenteDeContexto")
 
@@ -259,11 +262,21 @@ class FlowChatbot:
             lambda state: state["accion"],
             {"RESUMEN": "node_a7_agenteDeResumen", "CHAT": "node_a6_agenteDeChatbot"},
         )
-
+        constructor.add_edge("node_a6_agenteDeChatbot", "node_a8_agenteDeEvaluacion")
+        constructor.add_edge("node_a7_agenteDeResumen", "node_a8_agenteDeEvaluacion")
+        constructor.add_conditional_edges(
+            "node_a8_agenteDeEvaluacion",
+            lambda state: "LISTO" if state["evaluacion"]["listo"] else "NO_LISTO",
+            {
+                "LISTO": "node_a9_generarCuestionario",
+                "NO_LISTO": "node_a6_agenteDeChatbot",
+            },
+        )
+        
         constructor.set_finish_point("node_a6_agenteDeChatbot")
         constructor.set_finish_point("node_a2_promptNoValido")
-        constructor.set_finish_point("node_a7_agenteDeResumen")
-
+        constructor.set_finish_point("node_a9_generarCuestionario")
+        
         self.constructor = constructor
         self.grafo = constructor.compile()
 
@@ -277,13 +290,9 @@ class FlowChatbot:
             return promptUsuario
         return {"tipo": "texto", "contenido": promptUsuario}
 
-    def ejecutar(
-        self, prompt: Any, base: Any, config = None
-    ):
+    def ejecutar(self, prompt: Any, base: Any, config=None):
         """Ejecuta el grafo con un prompt y base dados."""
-        respuesta = self.grafo.invoke(
-            {"prompt": prompt, "base": base}, config=config
-        )
+        respuesta = self.grafo.invoke({"prompt": prompt, "base": base}, config=config)
         return respuesta.get("output", {})
 
     def reiniciar_memoria_del_chatbot(self) -> None:
