@@ -1,81 +1,82 @@
-from __future__ import annotations
-
-import logging
-from typing import Any, Dict, Optional
-
-
 from langgraph.graph import StateGraph, END
 
-from backend.util.util_llm import obtenerModelo
+# Utilitarios para llm
+from backend.util.util_llm import *
 
 # Agente de Contexto
-from backend.agent.AgenteDeContexto import AgenteDeContexto
+from backend.agent.AgenteDeContexto import *
 
 # Agente de Memoria a largo plazo
-from backend.agent.AgenteDeMemoriaLargoPlazo import AgenteDeMemoriaLargoPlazo
+from backend.agent.AgenteDeMemoriaLargoPlazo import *
 
 # Agente de Chatbot
-from backend.agent.AgenteDeChatbot import AgenteDeChatbot
+from backend.agent.AgenteDeChatbot import *
 
 # Agente de Análisis
-from backend.agent.AgenteDeAnalisis import AgenteDeAnalisis
+from backend.agent.AgenteDeAnalisis import *
 
 # Agente de Resumen
-from backend.agent.AgenteDeResumen import AgenteDeResumen
+from backend.agent.AgenteDeResumen import *
 
 # Agente de Supervisión
-from backend.agent.AgenteDeSupervision import AgenteDeSupervision
+from backend.agent.AgenteDeSupervision import *
 
 from backend.agent.AgenteDeEvaluacion import AgenteDeEvaluacion
+from backend.agent.AgenteDeCuestionario import AgenteDeCuestionario
 
-logger = logging.getLogger(__name__)
+# ...
 
 
 class FlowChatbot:
-    """Orquesta agentes con un grafo de estados (LangGraph).
 
-    Argumentos:
-        archivoDeUsuario: ruta del archivo para info persistente del usuario.
-        basesDeConocimiento: identificadores o paths de KB (se pasan al AgenteDeChatbot).
-    """
+    # Instaciamos los objetos necesarios
+    def __init__(self, archivoDeUsuario=None, basesDeConocimiento=None):
+        # Creamos los objetos del flujo
+        self.creacionDeObjetos(
+            archivoDeUsuario=archivoDeUsuario, basesDeConocimiento=basesDeConocimiento
+        )
 
-    def __init__(
-        self,
-        archivoDeUsuario: Optional[str] = None,
-        basesDeConocimiento: Optional[Any] = None,
-    ) -> None:
+        # Implementamos los nodos
+        self.implementacionDeNodos()
+
+        # Dibujamos el grafo
+        self.dibujadoDeGrafo()
+
+    # Crea los objetos para el flujo
+    def creacionDeObjetos(self, archivoDeUsuario=None, basesDeConocimiento=None):
+        # Guardamos los atributos
         self.archivoDeUsuario = archivoDeUsuario
         self.basesDeConocimiento = basesDeConocimiento
 
-        # --- Instancias de agentes ---
+        # Creamos un agente de contexto
         self.agenteDeContexto = AgenteDeContexto(
             llm=obtenerModelo(),
-            condiciones=(
-                """
-                Como mínimo debe cumplirse TODAS estas condiciones a la vez:
+            condiciones="""
+        Como mínimo debe cumplirse TODAS estas condiciones a la vez:
 
-                - Es un mensaje relacionado a lo que se esperaría en una conversación normal
-                - Es un mensaje que no contiene palabras groseras o que se consideren faltas de respeto
-                - Es un mensaje que tiene sentido y no es texto aleatorio sin significado (como: "asdasdasdhjlkasjdlkasjdlkajsdsadd", "qwerty123", "ajshdjahsdjas", etc.)
-                - Es un mensaje escrito en un idioma reconocible (español, inglés, portugués.)
-                - Es un mensaje que contiene palabras reales y no solo caracteres aleatorios o gibberish
-                """
-            ),
+        - Es un mensaje relacionado a lo que se esperaría en una conversación normal
+        - Es un mensaje que no contiene palabras groseras o que se consideren faltas de respeto
+        - Es un mensaje que tiene sentido y no es texto aleatorio sin significado (como: "asdasdasdhjlkasjdlkasjdlkajsdsadd", "qwerty123", "ajshdjahsdjas", etc.)
+        - Es un mensaje escrito en un idioma reconocible (español, inglés, portugués.)
+        - Es un mensaje que contiene palabras reales y no solo caracteres aleatorios o gibberish
+
+      """,
         )
 
+        # Creamos un agente de memoria a largo plazo
         self.agenteDeMemoriaLargoPlazo = AgenteDeMemoriaLargoPlazo(
             llm=obtenerModelo(),
-            condiciones=(
-                """
-                - El nombre del usuario
-                - La edad del usuario
-                - El sexo del usuario
-                """
-            ),
+            condiciones="""
+        - El nombre del usuario
+        - La edad del usuario
+        - El sexo del usuario
+      """,
         )
 
-        informacionDelUsuario = self._leerArchivo()
+        # Leemos la base de conocimiento del usuario
+        informacionDelUsuario = self.leerArchivo()
 
+        # Creamos un agente de chatbot
         self.agenteDeChatbot = AgenteDeChatbot(
             llm=obtenerModelo(),
             basesDeConocimiento=basesDeConocimiento,
@@ -105,36 +106,37 @@ class FlowChatbot:
             """,
         )
 
+        # Creamos el agente de analisis
         self.agenteDeAnalisis = AgenteDeAnalisis(
             llm=obtenerModelo(),
-            descripcion=(
-                """
-                Para un texto, si hay informacion que se contradicen entre sí
-                trata de darle coherencia, quedandote con la información más reciente,
-                dentro del texto. Sólo dame las lineas de este texto
-                según las indicaciones que te di en la variable json "textoCoherente"
-                Esta variable "textoCoherente" es del tipo "str", si ha varias líneas,
-                sepáralas con un enter
-                """
-            ),
+            descripcion="""
+        Para un texto, si hay informacion que se contradicen entre sí
+        trata de darle coherencia, quedandote con la información más reciente,
+        dentro del texto. Sólo dame las lineas de este texto
+        según las indicaciones que te di en la variable json "textoCoherente"
+        Esta variable "textoCoherente" es del tipo "str", si ha varias líneas,
+        sepáralas con un enter
+      """,
         )
 
         self.agenteDeResumen = AgenteDeResumen(llm=obtenerModelo())
-        self.AgenteDeSupervision = AgenteDeSupervision(llm=obtenerModelo())
+
+        self.agenteSupervisor = AgenteDeSupervision(llm=obtenerModelo())
+
         self.agenteDeEvaluacion = AgenteDeEvaluacion(llm=obtenerModelo())
 
-        # --- Construcción del grafo ---
-        self._construir_grafo()
+        self.agenteDeCuestionario = AgenteDeCuestionario(
+            llm=obtenerModelo(),
+            n=3,  # o el número que quieras
+            incluir_respuesta_correcta=False,  # no “spoilear” en UI
+            permitir_tipos=["opcion_multiple", "abierta", "vf"],
+        )
 
-    # =====================
-    # Construcción del grafo
-    # =====================
-    def _construir_grafo(self) -> None:
-        constructor: StateGraph = StateGraph(dict)
+    # Implementamos los nodos
+    def implementacionDeNodos(self):
 
-        # ---- Nodos ----
-        def node_a1_agenteDeContexto(state: Dict[str, Any]) -> Dict[str, Any]:
-            logger.debug("Ejecutando node_a1_agenteDeContexto...")
+        def node_a1_agenteDeContexto(state: dict) -> dict:
+            print("Ejecutando node_a1_agenteDeContexto...")
             output = dict(state)
             output["node_a1_agenteDeContexto"] = {}
             prompt = state["prompt"]
@@ -142,16 +144,14 @@ class FlowChatbot:
             output["node_a1_agenteDeContexto"] = respuesta
             return output
 
-        def node_a2_promptNoValido(state: Dict[str, Any]) -> Dict[str, Any]:
-            logger.debug("Ejecutando node_a2_promptNoValido...")
+        def node_a2_promptNoValido(state: dict) -> dict:
+            print("Ejecutando node_a2_promptNoValido...")
             output = dict(state)
-            output["output"] = {
-                "respuesta": state["node_a1_agenteDeContexto"]["message"]
-            }
+            output["output"] = {"respuesta": state["node_a1_agenteDeContexto"]["message"]}
             return output
 
-        def node_a3_agenteDeMemoriaLargoPlazo(state: Dict[str, Any]) -> Dict[str, Any]:
-            logger.debug("Ejecutando node_a3_agenteDeMemoriaLargoPlazo...")
+        def node_a3_agenteDeMemoriaLargoPlazo(state: dict) -> dict:
+            print("Ejecutando node_a3_agenteDeMemoriaLargoPlazo...")
             output = dict(state)
             output["node_a3_agenteDeMemoriaLargoPlazo"] = {}
             prompt = state["prompt"]
@@ -159,30 +159,26 @@ class FlowChatbot:
             output["node_a3_agenteDeMemoriaLargoPlazo"] = respuesta
             return output
 
-        def node_a4_informacionPorRecordar(state: Dict[str, Any]) -> Dict[str, Any]:
-            logger.debug("Ejecutando node_a4_informacionPorRecordar...")
+        def node_a4_informacionPorRecordar(state: dict) -> dict:
+            print("Ejecutando node_a4_informacionPorRecordar...")
             output = dict(state)
-            informacionDelUsuario = self._leerArchivo()
-            informacionPorRecordar = state["node_a3_agenteDeMemoriaLargoPlazo"][
-                "informacion"
-            ]
-            informacionCombinada = (
-                f"{informacionDelUsuario}\n{informacionPorRecordar}".strip()
-            )
+            informacionDelUsuario = self.leerArchivo()
+            info = state["node_a3_agenteDeMemoriaLargoPlazo"].get("informacion", "")
+            informacionCombinada = f"{informacionDelUsuario}\n{info}".strip()
             informacionCoherente = self.agenteDeAnalisis.ejecutar(informacionCombinada)
-            self._escribirArchivo(informacionCoherente.get("textoCoherente", ""))
+            self.escribirArchivo(informacionCoherente.get("textoCoherente", ""))
             return output
 
-        def nodo_a5_agenteDeSupervision(state: Dict[str, Any]) -> Dict[str, Any]:
-            logger.debug("Ejecutando node_router...")
-            salida = dict(state)
+        def node_a5_agenteDeSupervision(state: dict) -> dict:
+            print("Ejecutando node_a5_agenteDeSupervision...")
             mensaje = state["prompt"]["contenido"]
-            accion = self.AgenteDeSupervision.clasificar(mensaje)
+            accion = self.agenteSupervisor.clasificar(mensaje)
+            salida = dict(state)
             salida["accion"] = accion
             return salida
 
-        def node_a6_agenteDeChatbot(state: Dict[str, Any]) -> Dict[str, Any]:
-            logger.debug("Ejecutando node_a5_agenteDeChatbot...")
+        def node_a6_agenteDeChatbot(state: dict) -> dict:
+            print("Ejecutando node_a6_agenteDeChatbot...")
             output = dict(state)
             output["output"] = {}
             contenido = state["prompt"]["contenido"]
@@ -191,8 +187,8 @@ class FlowChatbot:
             output["output"]["respuesta"] = respuesta
             return output
 
-        def node_a7_agenteDeResumen(state: Dict[str, Any]) -> Dict[str, Any]:
-            logger.debug("Ejecutando node_a7_agenteDeResumen...")
+        def node_a7_agenteDeResumen(state: dict) -> dict:
+            print("Ejecutando node_a7_agenteDeResumen...")
             output = dict(state)
             output["output"] = {}
             historial = self.agenteDeChatbot.chat_sin_kb.memory.chat_memory.messages
@@ -200,43 +196,49 @@ class FlowChatbot:
             output["output"]["respuesta"] = resumen
             return output
 
-        def node_a8_agenteDeEvaluacion(state: Dict[str, Any]) -> Dict[str, Any]:
-            # recibe la respuesta del chatbot y decide si está listo
+        def node_a8_agenteDeEvaluacion(state: dict) -> dict:
+            print("Ejecutando node_a8_agenteDeEvaluacion...")
             output = dict(state)
+            try:
+                msgs = self.agenteDeChatbot.chat_sin_kb.memory.chat_memory.messages
+                historial_texto = "\n".join(getattr(m, "content", "") for m in msgs)
+            except Exception:
+                historial_texto = ""
             respuesta = state["output"]["respuesta"]
-            evaluacion = self.agenteDeEvaluacion.evaluar(respuesta)
+            evaluacion = self.agenteDeEvaluacion.evaluar(
+                respuesta=respuesta, historial_texto=historial_texto
+            )
             output["evaluacion"] = evaluacion
             return output
 
-        def node_a9_generarCuestionario(state: Dict[str, Any]) -> Dict[str, Any]:
-            # si el estudiante está listo, genera preguntas y las añade al output
+        def node_a9_generarCuestionario(state: dict) -> dict:
+            print("Ejecutando node_a9_generarCuestionario...")
             output = dict(state)
-            leccion = state["base"]  # la lección usada como KB
-            preguntas = self.agenteDeEvaluacion.generar_cuestionario(leccion)
+            leccion = state["base"]
+            paquete = self.agenteDeCuestionario.generar(leccion=str(leccion))
             output["output"] = {
                 "respuesta": state["output"]["respuesta"],
-                "cuestionario": preguntas,
+                "cuestionario": paquete.get("preguntas", []),
+                "meta": paquete.get("meta", {"leccion": leccion, "n": 0}),
             }
             return output
 
-        # ---- Wiring ----
-        constructor.add_node("nodo_a5_agenteDeSupervision", nodo_a5_agenteDeSupervision)
-        constructor.add_node("node_a1_agenteDeContexto", node_a1_agenteDeContexto)
-        constructor.add_node("node_a2_promptNoValido", node_a2_promptNoValido)
-        constructor.add_node(
-            "node_a3_agenteDeMemoriaLargoPlazo", node_a3_agenteDeMemoriaLargoPlazo
-        )
-        constructor.add_node(
-            "node_a4_informacionPorRecordar", node_a4_informacionPorRecordar
-        )
-        constructor.add_node("node_a6_agenteDeChatbot", node_a6_agenteDeChatbot)
-        constructor.add_node("node_a7_agenteDeResumen", node_a7_agenteDeResumen)
-        constructor.add_node("node_a8_agenteDeEvaluacion", node_a8_agenteDeEvaluacion)
-        constructor.add_node("node_a9_generarCuestionario", node_a9_generarCuestionario)
+        # Registrar nodos
+        self.constructor = StateGraph(dict)
+        self.constructor.add_node("node_a5_agenteDeSupervision", node_a5_agenteDeSupervision)
+        self.constructor.add_node("node_a1_agenteDeContexto", node_a1_agenteDeContexto)
+        self.constructor.add_node("node_a2_promptNoValido", node_a2_promptNoValido)
+        self.constructor.add_node("node_a3_agenteDeMemoriaLargoPlazo", node_a3_agenteDeMemoriaLargoPlazo)
+        self.constructor.add_node("node_a4_informacionPorRecordar", node_a4_informacionPorRecordar)
+        self.constructor.add_node("node_a6_agenteDeChatbot", node_a6_agenteDeChatbot)
+        self.constructor.add_node("node_a7_agenteDeResumen", node_a7_agenteDeResumen)
+        self.constructor.add_node("node_a8_agenteDeEvaluacion", node_a8_agenteDeEvaluacion)
+        self.constructor.add_node("node_a9_generarCuestionario", node_a9_generarCuestionario)
+        # Dibujamos el grafo
+    def dibujadoDeGrafo(self):
+        self.constructor.set_entry_point("node_a1_agenteDeContexto")
 
-        constructor.set_entry_point("node_a1_agenteDeContexto")
-
-        constructor.add_conditional_edges(
+        self.constructor.add_conditional_edges(
             "node_a1_agenteDeContexto",
             lambda state: state["node_a1_agenteDeContexto"]["status"],
             {
@@ -245,82 +247,83 @@ class FlowChatbot:
             },
         )
 
-        constructor.add_conditional_edges(
+        self.constructor.add_conditional_edges(
             "node_a3_agenteDeMemoriaLargoPlazo",
             lambda state: state["node_a3_agenteDeMemoriaLargoPlazo"]["status"],
             {
                 "INFORMACION_POR_RECORDAR": "node_a4_informacionPorRecordar",
-                "NO_INFORMACION_POR_RECORDAR": "nodo_a5_agenteDeSupervision",
+                "NO_INFORMACION_POR_RECORDAR": "node_a5_agenteDeSupervision",
             },
         )
 
-        constructor.add_edge(
-            "node_a4_informacionPorRecordar", "nodo_a5_agenteDeSupervision"
-        )
-        constructor.add_conditional_edges(
-            "nodo_a5_agenteDeSupervision",
+        self.constructor.add_edge("node_a4_informacionPorRecordar", "node_a5_agenteDeSupervision")
+
+        self.constructor.add_conditional_edges(
+            "node_a5_agenteDeSupervision",
             lambda state: state["accion"],
             {"RESUMEN": "node_a7_agenteDeResumen", "CHAT": "node_a6_agenteDeChatbot"},
         )
-        constructor.add_edge("node_a6_agenteDeChatbot", "node_a8_agenteDeEvaluacion")
-        constructor.add_edge("node_a7_agenteDeResumen", "node_a8_agenteDeEvaluacion")
-        constructor.add_conditional_edges(
+
+        # Siempre evaluar después de responder o resumir
+        self.constructor.add_edge("node_a6_agenteDeChatbot", "node_a8_agenteDeEvaluacion")
+        self.constructor.add_edge("node_a7_agenteDeResumen", "node_a8_agenteDeEvaluacion")
+
+        # Ruteo de evaluación
+        self.constructor.add_conditional_edges(
             "node_a8_agenteDeEvaluacion",
-            lambda state: "LISTO" if state["evaluacion"]["listo"] else "NO_LISTO",
+            lambda s: "LISTO" if bool(s.get("evaluacion", {}).get("listo")) else "NO_LISTO",
             {
                 "LISTO": "node_a9_generarCuestionario",
-                "NO_LISTO": "node_a6_agenteDeChatbot",
+                "NO_LISTO": END,  # termina con la respuesta del chatbot/resumen
             },
         )
-        
-        constructor.set_finish_point("node_a6_agenteDeChatbot")
-        constructor.set_finish_point("node_a2_promptNoValido")
-        constructor.set_finish_point("node_a9_generarCuestionario")
-        
-        self.constructor = constructor
-        self.grafo = constructor.compile()
 
-    # =====================
-    # API pública
-    # =====================
-    @staticmethod
-    def preparar_prompt(promptUsuario: Any) -> Dict[str, Any]:
-        """Normaliza el prompt a {"tipo": str, "contenido": Any}."""
+        # puntos de fin
+        self.constructor.set_finish_point("node_a2_promptNoValido")
+        self.constructor.set_finish_point("node_a9_generarCuestionario")
+
+        self.grafo = self.constructor.compile()
+
+
+    def preparar_prompt(self, promptUsuario):
         if isinstance(promptUsuario, dict) and "tipo" in promptUsuario:
+            # Ya viene en formato correcto
             return promptUsuario
+
+        # Si el usuario envía simplemente un string, lo formateamos como texto
         return {"tipo": "texto", "contenido": promptUsuario}
 
-    def ejecutar(self, prompt: Any, base: Any, config=None):
-        """Ejecuta el grafo con un prompt y base dados."""
+    # Ejecución
+    def ejecutar(self, prompt, base, config=None):
+
+        # Ejecutamos el grafo
         respuesta = self.grafo.invoke({"prompt": prompt, "base": base}, config=config)
-        return respuesta.get("output", {})
 
-    def reiniciar_memoria_del_chatbot(self) -> None:
-        logger.info("Reiniciando la memoria del chatbot...")
-        if hasattr(self, "agenteDeChatbot"):
-            self.agenteDeChatbot.reiniciar_memoria()
+        # Devolvemos la respuesta
+        return respuesta["output"]
 
-    # =====================
-    # Persistencia de info de usuario
-    # =====================
-    def _leerArchivo(self) -> str:
-        if not self.archivoDeUsuario:
-            return "SIN INFORMACION ADICIONAL"
+    # Lee el archivo de información del usuario
+    def leerArchivo(self):
+        contenido = ""
+
         try:
             with open(self.archivoDeUsuario, "r", encoding="utf-8") as archivo:
-                return archivo.read()
+                contenido = archivo.read()
         except FileNotFoundError:
-            return "SIN INFORMACION ADICIONAL"
-        except Exception as exc:
-            logger.exception("Error leyendo archivo de usuario: %s", exc)
-            return "SIN INFORMACION ADICIONAL"
+            contenido = "SIN INFORMACION ADICIONAL"
 
-    def _escribirArchivo(self, texto: str) -> None:
-        if not self.archivoDeUsuario:
-            logger.warning("archivoDeUsuario no configurado; no se escribirá nada")
-            return
+        return contenido
+
+    # Escribe información sobre el usuario en su archivo
+    def escribirArchivo(self, texto):
         try:
             with open(self.archivoDeUsuario, "w", encoding="utf-8") as archivo:
-                archivo.write((texto or "").strip() + "\n")
-        except Exception as exc:
-            logger.exception("Error escribiendo archivo de usuario: %s", exc)
+                archivo.write((texto or "") + "\n")
+        except Exception:
+            pass  # no alteramos el flujo si falla la persistencia
+
+    def reiniciar_memoria_del_chatbot(self):
+        """Pasa la orden de reinicio al agente de chatbot."""
+        print("Reiniciando la memoria del chatbot...")
+        if hasattr(self, "agenteDeChatbot"):
+            self.agenteDeChatbot.reiniciar_memoria()
