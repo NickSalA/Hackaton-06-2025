@@ -142,6 +142,8 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
     setLoading(true);
     try {
       await fetch(`/api/chat-message?lessonId=${lessonId}`, { method: "DELETE" });
+      // Llama al endpoint Next.js que resetea el backend Flask
+      await fetch("/api/reset-chatbot", { method: "POST" });
       setMessages([]);
     } finally {
       setLoading(false);
@@ -319,7 +321,7 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
               )}
             </div>
           ))}
-          {loading && (
+          {loading && messages.length > 0 && (
             <div className="flex w-full justify-start animate-fade-in">
               <div className="flex items-end mr-2">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#10a37f] to-[#22d3ee] flex items-center justify-center text-white font-bold shadow">
