@@ -9,6 +9,9 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
   const [input, setInput] = React.useState("");
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const chatContainerRef = React.useRef<HTMLDivElement>(null);
+  const [recording, setRecording] = React.useState(false);
+  const [recognizing, setRecognizing] = React.useState(false);
+  const recognitionRef = React.useRef<any>(null);
 
   // Autoajustar altura del textarea
   React.useEffect(() => {
@@ -61,6 +64,78 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+
+  // --- AUDIO (Web Speech API) ---
+  const handleAudioClick = () => {
+    if (recognizing) {
+      recognitionRef.current?.stop();
+      setRecording(false);
+      setRecognizing(false);
+      return;
+    }
+    // @ts-ignore
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Tu navegador no soporta reconocimiento de voz (Web Speech API)");
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+    recognition.lang = "es-ES"; // Cambia el idioma si lo necesitas
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    setRecording(true);
+    setRecognizing(true);
+    recognition.onresult = async (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setRecording(false);
+      setRecognizing(false);
+      if (transcript) {
+        setMessages((msgs) => [
+          ...msgs,
+          { role: "user", content: transcript },
+        ]);
+        setLoading(true);
+        try {
+          const res = await fetch("/api/agent", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              prompt: {
+                tipo: "texto",
+                contenido: transcript,
+              },
+              lessonId,
+            }),
+          });
+          const data = await res.json();
+          let botMsg = data.respuesta || data.output?.respuesta || data.message || JSON.stringify(data);
+          setMessages((msgs) => [
+            ...msgs,
+            { role: "bot", content: botMsg || "(Sin respuesta del agente)" },
+          ]);
+        } catch {
+          setMessages((msgs) => [
+            ...msgs,
+            { role: "bot", content: "Error en la petición" },
+          ]);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    recognition.onerror = (event: any) => {
+      setRecording(false);
+      setRecognizing(false);
+      alert("Error en el reconocimiento de voz: " + event.error);
+    };
+    recognition.onend = () => {
+      setRecording(false);
+      setRecognizing(false);
+    };
+    recognition.start();
   };
 
   return (
@@ -138,13 +213,20 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
         <div className="flex-1 flex items-end gap-2 bg-[#23242a] rounded-2xl shadow-inner px-3 py-2 border border-[#343541]">
           <button
             type="button"
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-[#23242a] border border-[#343541] text-[#38bdf8] hover:bg-[#1e293b] hover:text-[#0ea5e9] transition shadow-sm mr-2"
-            title="Enviar audio (próximamente)"
-            disabled
+            className={`w-10 h-10 flex items-center justify-center rounded-full border transition shadow-sm mr-2 ${recording ? "bg-red-600 border-red-600 text-white animate-pulse" : "bg-[#23242a] border-[#343541] text-[#38bdf8] hover:bg-[#1e293b] hover:text-[#0ea5e9]"}`}
+            title={recording ? "Grabando..." : "Enviar audio"}
+            onClick={handleAudioClick}
+            disabled={loading || recognizing}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75v1.5m0 0a6 6 0 0 1-6-6v-2.25m12 0v2.25a6 6 0 0 1-6 6zm0 0v-1.5m0 0a3 3 0 0 0 3-3v-3a3 3 0 0 0-6 0v3a3 3 0 0 0 3 3z" />
-            </svg>
+            {recording ? (
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto animate-pulse">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75v1.5m0 0a6 6 0 0 1-6-6v-2.25m12 0v2.25a6 6 0 0 1-6 6zm0 0v-1.5m0 0a3 3 0 0 0 3-3v-3a3 3 0 0 0-6 0v3a3 3 0 0 0 3 3z" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75v1.5m0 0a6 6 0 0 1-6-6v-2.25m12 0v2.25a6 6 0 0 1-6 6zm0 0v-1.5m0 0a3 3 0 0 0 3-3v-3a3 3 0 0 0-6 0v3a3 3 0 0 0 3 3z" />
+              </svg>
+            )}
           </button>
           <textarea
             ref={textareaRef}
