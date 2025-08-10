@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import type { Lesson } from "../../data/lessons";
+import type { Lesson } from "@prisma/client";
 
 const LessonSidebar: React.FC<{ lesson: Lesson }> = ({ lesson }) => {
   const [open, setOpen] = React.useState(true);

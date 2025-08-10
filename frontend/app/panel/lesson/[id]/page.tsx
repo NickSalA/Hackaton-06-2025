@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Navbar from "@/app/components/shared/Navbar";
-import { lessons, Lesson } from "@/app/data/lessons";
+import { prisma } from "@/lib/prisma";
 import ChatSection from "@/app/components/lessons/ChatSection";
 import LessonSidebar from "@/app/components/lessons/LessonSidebar";
 
@@ -8,9 +8,10 @@ interface LessonPageProps {
   params: { id: string };
 }
 
+
 export default async function LessonPage({ params }: LessonPageProps) {
-  const { id } = await params;
-  const lesson = lessons.find((l: Lesson) => l.id === id);
+  const { id } = params;
+  const lesson = await prisma.lesson.findUnique({ where: { id } });
   if (!lesson) return notFound();
 
   return (
