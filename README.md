@@ -36,7 +36,6 @@ cd Hackaton-06-2025
 ### 2. Configura el backend (Flask)
 
 ```bash
-cd backend
 pip install -r requirements.txt
 python app.py
 ```
