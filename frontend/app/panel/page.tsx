@@ -38,20 +38,39 @@ export default async function PanelPage() {
     percentCompleted = totalLessons > 0 ? Math.round((lessonsCompleted / totalLessons) * 100) : 0;
   }
 
-  // Obtener la racha (streak) desde el API
+  // Calcular la racha (streak) directamente usando Prisma
   let streak = 0;
-  if (courseId) {
-    // En SSR Next.js 13+, fetch requiere URL absoluta
-    let baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-    if (!baseUrl) {
-      // fallback: intenta usar localhost
-      baseUrl = "http://localhost:3000";
-    }
-    const apiUrl = `${baseUrl}/api/access-log?courseId=${courseId}`;
-    const res = await fetch(apiUrl, { cache: "no-store" });
-    if (res.ok) {
-      const data = await res.json();
-      streak = data.streak || 0;
+  if (courseId && session?.user?.email) {
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (user) {
+      const logs = await prisma.accessLog.findMany({
+        where: { userId: user.id, courseId },
+        orderBy: { accessedAt: "desc" },
+      });
+      // Lógica de racha igual que en el endpoint
+      let prev = null;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (logs.length > 0) {
+        const firstLog = new Date(logs[0].accessedAt);
+        firstLog.setHours(0, 0, 0, 0);
+        const diffFirst = (today.getTime() - firstLog.getTime()) / (1000 * 60 * 60 * 24);
+        if (Math.round(diffFirst) === 0 || Math.round(diffFirst) === 1) {
+          streak = 1;
+          prev = firstLog;
+          for (let i = 1; i < logs.length; i++) {
+            const logDate = new Date(logs[i].accessedAt);
+            logDate.setHours(0, 0, 0, 0);
+            const diff = (prev.getTime() - logDate.getTime()) / (1000 * 60 * 60 * 24);
+            if (Math.round(diff) === 1) {
+              streak++;
+              prev = logDate;
+            } else if (diff > 1) {
+              break;
+            }
+          }
+        }
+      }
     }
   }
 

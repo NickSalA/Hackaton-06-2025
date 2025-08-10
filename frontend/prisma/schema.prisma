@@ -51,19 +51,11 @@ model Account {
 }
 
 model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@id([identifier, token])
+  id                 String   @id @default(cuid())
+  sessionToken       String   @unique
+  userId             String
+  expires            DateTime
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 /// ========= MODELOS DEL CHAT =========
@@ -109,6 +101,8 @@ model Course {
 }
 
 model Lesson {
+  infoPanel String? // Markdown para el panel lateral
+  chatWelcomeMessage String? // Mensaje inicial personalizado del chat
   id        String   @id @default(cuid())
   courseId  String
   slug      String   @unique

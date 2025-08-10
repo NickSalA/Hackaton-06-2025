@@ -6,24 +6,54 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
   const [messages, setMessages] = React.useState<
     { role: "user" | "bot"; content: string }[]
   >([]);
+  const [welcomeMessage, setWelcomeMessage] = React.useState<string | null>(null);
   // Cargar mensajes desde la BD al montar
   React.useEffect(() => {
-    const fetchMessages = async () => {
+    const fetchMessagesAndWelcome = async () => {
       try {
+        // Fetch chat messages
         const res = await fetch(`/api/chat-message?lessonId=${lessonId}`);
+        let msgs: { role: "user" | "bot"; content: string }[] = [];
         if (res.ok) {
           const data = await res.json();
-          // El backend devuelve { role: "user"|"assistant", content }
-          setMessages(
-            data.map((m: any) => ({
-              role: m.role === "assistant" ? "bot" : "user",
-              content: m.content,
-            }))
-          );
+          msgs = data.map((m: any) => ({
+            role: m.role === "assistant" ? "bot" : "user",
+            content: m.content,
+          }));
         }
-      } catch {}
+        setMessages(msgs);
+        // If no messages, fetch welcome message from lesson
+        if (msgs.length === 0) {
+          const lessonRes = await fetch(`/api/lesson?lessonId=${lessonId}`);
+          if (lessonRes.ok) {
+            const lessonData = await lessonRes.json();
+            if (lessonData.chatWelcomeMessage) {
+              setWelcomeMessage(lessonData.chatWelcomeMessage);
+              // Guardar el mensaje de bienvenida como mensaje del bot en la BD
+              await fetch("/api/chat-message", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  lessonId,
+                  content: lessonData.chatWelcomeMessage,
+                  role: "assistant",
+                }),
+              });
+              setMessages([{ role: "bot", content: lessonData.chatWelcomeMessage }]);
+            } else {
+              setWelcomeMessage(null);
+            }
+          } else {
+            setWelcomeMessage(null);
+          }
+        } else {
+          setWelcomeMessage(null);
+        }
+      } catch {
+        setWelcomeMessage(null);
+      }
     };
-    fetchMessages();
+    fetchMessagesAndWelcome();
   }, [lessonId]);
   // ...existing code...
   const [playingIndex, setPlayingIndex] = React.useState<number | null>(null);
@@ -247,11 +277,23 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
           style={{ minHeight: 200 }}
         >
           {messages.length === 0 && (
-            <div className="flex-1 text-gray-400 flex items-center justify-center">
-              <span className="opacity-80 text-center">
-                Welcome to the lesson chat!<br />
-                Type your first question or message to start interacting with the assistant.
-              </span>
+            <div className="flex w-full animate-fade-in justify-start">
+              <div className="flex items-end mr-2">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#10a37f] to-[#22d3ee] flex items-center justify-center text-white font-bold shadow">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 0v4m0 8v4m-4-4h8" />
+                  </svg>
+                </div>
+              </div>
+              <div className="flex items-center max-w-[75%]">
+                <div
+                  className="flex-1 px-4 py-2 rounded-2xl shadow-md text-sm whitespace-pre-line transition-all duration-200 bg-[#10a37f]/10 text-[#10a37f] rounded-bl-md border border-[#10a37f]/30"
+                >
+                  {welcomeMessage
+                    ? welcomeMessage
+                    : <>Welcome to the lesson chat!<br />Type your first question or message to start interacting with the assistant.</>}
+                </div>
+              </div>
             </div>
           )}
           {messages.map((msg, i) => (
