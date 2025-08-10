@@ -16,6 +16,19 @@ export default async function LessonsPage() {
     orderBy: { createdAt: "asc" },
   });
 
+  // Obtener progreso del usuario
+  let progressMap: Record<string, string> = {};
+  if (session?.user?.email) {
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (user) {
+      const progresses = await prisma.progress.findMany({
+        where: { userId: user.id },
+        select: { lessonId: true, status: true },
+      });
+      progressMap = Object.fromEntries(progresses.map(p => [p.lessonId, p.status]));
+    }
+  }
+
   return (
     <>
       <Navbar />
@@ -33,7 +46,7 @@ export default async function LessonsPage() {
           </p>
         </div>
         <div className="w-full max-w-4xl mx-auto">
-          <LessonsList lessons={lessons} />
+          <LessonsList lessons={lessons} progressMap={progressMap} />
         </div>
       </main>
     </>

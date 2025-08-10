@@ -16,6 +16,28 @@ export default async function PanelPage() {
   const course = await prisma.course.findFirst({ orderBy: { createdAt: "asc" } });
   const courseId = course?.id || "";
 
+  // Lessons y progreso
+  let lessonsCompleted = 0;
+  let totalLessons = 0;
+  let percentCompleted = 0;
+  if (courseId && session?.user?.email) {
+    // Total de lecciones del curso
+    totalLessons = await prisma.lesson.count({ where: { courseId } });
+    // Usuario
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (user) {
+      // Lecciones completadas por el usuario
+      lessonsCompleted = await prisma.progress.count({
+        where: {
+          userId: user.id,
+          status: "COMPLETED",
+          lesson: { courseId },
+        },
+      });
+    }
+    percentCompleted = totalLessons > 0 ? Math.round((lessonsCompleted / totalLessons) * 100) : 0;
+  }
+
   // Obtener la racha (streak) desde el API
   let streak = 0;
   if (courseId) {
@@ -56,7 +78,7 @@ export default async function PanelPage() {
                   <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M16 10v6l4 2' stroke='#10a37f' />
                 </svg>
               </span>
-              <span className="text-4xl font-extrabold text-[#10a37f] mb-2">0%</span>
+              <span className="text-4xl font-extrabold text-[#10a37f] mb-2">{percentCompleted}%</span>
               <span className="text-gray-200 font-medium">Course Completed</span>
             </div>
             <div className="backdrop-blur-md bg-white/5 border border-[#22d3ee]/30 rounded-2xl p-8 shadow-xl flex flex-col items-center transition-transform duration-300 hover:scale-105 hover:border-[#22d3ee]">
@@ -66,7 +88,7 @@ export default async function PanelPage() {
                   <path d='M10 20l6-6 6 6' stroke='#22d3ee' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' fill='none'/>
                 </svg>
               </span>
-              <span className="text-4xl font-extrabold text-[#22d3ee] mb-2">0</span>
+              <span className="text-4xl font-extrabold text-[#22d3ee] mb-2">{lessonsCompleted}</span>
               <span className="text-gray-200 font-medium">Lessons Completed</span>
             </div>
             <div className="backdrop-blur-md bg-white/5 border border-[#fbbf24]/30 rounded-2xl p-8 shadow-xl flex flex-col items-center transition-transform duration-300 hover:scale-105 hover:border-[#fbbf24]">

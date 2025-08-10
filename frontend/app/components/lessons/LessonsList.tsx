@@ -4,21 +4,30 @@ import type { Lesson } from "@prisma/client";
 import LessonCard from "./LessonCard";
 import { useRouter } from "next/navigation";
 
+
 interface LessonsListProps {
   lessons: Lesson[];
+  progressMap?: Record<string, string>; // lessonId -> status
   onSelectLesson?: (lesson: Lesson) => void;
 }
 
 
-const LessonsList: React.FC<LessonsListProps> = ({ lessons, onSelectLesson }) => {
+const LessonsList: React.FC<LessonsListProps> = ({ lessons, progressMap = {}, onSelectLesson }) => {
   const router = useRouter();
-  // Progressive unlocking: only the first lesson and previous completed ones are enabled
-  // For demo, only the first lesson is enabled. Replace logic with real progress as needed.
+  // Progressive unlocking: habilita la primera y la siguiente solo si la anterior está COMPLETED
+  let unlocked = true;
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {lessons.map((lesson, idx) => {
-        // Only the first lesson is enabled; others are disabled
-        const enabled = idx === 0;
+        let enabled = false;
+        if (idx === 0) {
+          enabled = true;
+        } else {
+          const prevLesson = lessons[idx - 1];
+          enabled = progressMap[prevLesson.id] === "COMPLETED";
+        }
+        // Si la lección ya está completada, también se puede acceder
+        if (progressMap[lesson.id] === "COMPLETED") enabled = true;
         return (
           <LessonCard
             key={lesson.id}
