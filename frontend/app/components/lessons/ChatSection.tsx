@@ -91,12 +91,12 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
       }
       setMessages((msgs) => [
         ...msgs,
-        { role: "bot", content: botMsg || "(Sin respuesta del agente)" },
+        { role: "bot", content: botMsg || "(No response from agent)" },
       ]);
     } catch (e) {
       setMessages((msgs) => [
         ...msgs,
-        { role: "bot", content: "Error en la petición" },
+        { role: "bot", content: "Request error" },
       ]);
     } finally {
       setLoading(false);
@@ -156,7 +156,7 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
         } catch {
           setMessages((msgs) => [
             ...msgs,
-            { role: "bot", content: "Error en la petición" },
+            { role: "bot", content: "Request error" },
           ]);
         } finally {
           setLoading(false);
@@ -185,7 +185,7 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
         {messages.length === 0 && (
           <div className="flex-1 text-gray-400 flex items-center justify-center">
             <span className="opacity-60">
-              ¡Comienza el chat de la lección <b>{lessonId}</b>!
+              Start the lesson chat <b>{lessonId}</b>!
             </span>
           </div>
         )}
@@ -221,7 +221,7 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
                 playingIndex === i ? (
                   <button
                     className="ml-2 w-8 h-8 flex items-center justify-center rounded-full border border-[#10a37f]/30 bg-[#10a37f]/10 text-[#10a37f] hover:bg-[#10a37f]/20 transition animate-pulse"
-                    title="Detener audio"
+                    title="Stop audio"
                     onClick={() => {
                       window.speechSynthesis.cancel();
                       setPlayingIndex(null);
@@ -234,7 +234,7 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
                 ) : (
                   <button
                     className="ml-2 w-8 h-8 flex items-center justify-center rounded-full border border-[#10a37f]/30 bg-[#10a37f]/10 text-[#10a37f] hover:bg-[#10a37f]/20 transition"
-                    title="Reproducir audio"
+                    title="Play audio"
                     onClick={() => handlePlayAudio(msg.content, i)}
                     disabled={playingIndex !== null}
                   >
@@ -266,7 +266,7 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
               </div>
             </div>
             <div className="max-w-[75%] px-4 py-2 rounded-2xl shadow-md text-sm bg-[#10a37f]/10 text-[#10a37f] border border-[#10a37f]/30 rounded-bl-md animate-pulse">
-              Pensando...
+              Thinking...
             </div>
           </div>
         )}
@@ -281,7 +281,7 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
             <button
               type="button"
               className="w-10 h-10 flex items-center justify-center rounded-full border border-red-600 bg-red-600 text-white animate-pulse shadow-sm mr-2"
-              title="Detener grabación"
+              title="Stop recording"
               onClick={() => {
                 recognitionRef.current?.stop();
                 setRecording(false);
@@ -297,7 +297,7 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
             <button
               type="button"
               className="w-10 h-10 flex items-center justify-center rounded-full border transition shadow-sm mr-2 bg-[#23242a] border-[#343541] text-[#38bdf8] hover:bg-[#1e293b] hover:text-[#0ea5e9]"
-              title="Enviar audio"
+              title="Record audio"
               onClick={handleAudioClick}
               disabled={loading || recognizing}
             >
@@ -309,7 +309,7 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
           <textarea
             ref={textareaRef}
             className="flex-1 resize-none rounded-xl px-4 py-3 bg-transparent text-white border-none focus:outline-none min-h-[40px] max-h-40 transition-all placeholder:text-gray-400"
-            placeholder="Escribe tu mensaje..."
+            placeholder="Type your message..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             rows={1}
