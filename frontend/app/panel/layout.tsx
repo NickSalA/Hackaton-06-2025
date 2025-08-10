@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "AI Teacher",
+  title: "ProfAI",
   description: "Plataforma interactiva de aprendizaje impulsada por IA, con chat, lecciones y panel informativo.",
 };
 

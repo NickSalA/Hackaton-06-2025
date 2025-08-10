@@ -10,7 +10,7 @@ export default function Home() {
       <main className="flex-1 flex flex-col items-center justify-center min-h-[80vh] p-8 gap-10 bg-gradient-to-br from-[#18181b] via-[#343541] to-[#23272f] transition-colors duration-300">
         <section className="w-full max-w-3xl text-center flex flex-col items-center gap-4">
           <h1 className="text-5xl md:text-6xl font-extrabold text-white drop-shadow-lg tracking-tight animate-fade-in">
-            AI Teacher
+            ProfAI
           </h1>
           <p className="text-xl md:text-2xl text-[#10a37f] font-semibold mb-2 animate-fade-in delay-100">
             Learn Prompt Engineering and master conversational AI
@@ -51,8 +51,8 @@ export default function Home() {
               {/* Logo centrado sobre la animación */}
               {/* Optimized logo with Next.js Image */}
               <Image
-                src="/ai_teacher_logo.png"
-                alt="AI Teacher Logo"
+                src="/profai_logo.png"
+                alt="ProfAI Logo"
                 width={90}
                 height={90}
                 className="object-contain"

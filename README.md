@@ -1,4 +1,4 @@
-# AI Teacher
+# ProfAI
 
 Plataforma interactiva de aprendizaje impulsada por IA, con chat, lecciones, panel informativo y seguimiento de progreso.
 
@@ -68,7 +68,7 @@ Edita `frontend/prisma/seed-lessons.js` para personalizar ids, títulos, mensaje
 
 ## Personalización
 
-- Cambia el logo en `frontend/public/ai_teacher_logo.png`.
+- Cambia el logo en `frontend/public/profai_logo.png`.
 - El título global se define en `frontend/app/layout.tsx`.
 - El favicon se configura en el mismo archivo con `<link rel="icon" ... />`.
 

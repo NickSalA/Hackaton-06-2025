@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Teacher",
+  title: "ProfAI",
   description: "Plataforma interactiva de aprendizaje impulsada por IA, con chat, lecciones y panel informativo.",
 };
 
@@ -27,7 +27,7 @@ export default function RootLayout({
     <html lang="en">
       <head>
         {/* Favicon circular usando PNG para mejor transparencia */}
-        <link rel="icon" href="/ai_teacher_logo.png" type="image/png" style={{ borderRadius: '50%', background: '#fff' }} />
+  <link rel="icon" href="/profai_logo.png" type="image/png" style={{ borderRadius: '50%', background: '#fff' }} />
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body
