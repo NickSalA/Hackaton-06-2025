@@ -25,8 +25,15 @@ const LessonCard: React.FC<LessonCardProps> = ({ lesson, number, onClick, enable
         {number}
       </div>
     )}
+    {!enabled && (
+      <div className="absolute top-3 right-3 z-30">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 11V7a5 5 0 0 0-10 0v4M5 11h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2z" />
+        </svg>
+      </div>
+    )}
     <h2 className="text-xl font-bold text-white mb-2 ml-2">{lesson.title}</h2>
-  <p className="text-gray-300 mb-1 ml-2">{lesson.description ?? ""}</p>
+    <p className="text-gray-300 mb-1 ml-2">{lesson.description ?? ""}</p>
   </div>
 );
 
