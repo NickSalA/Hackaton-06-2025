@@ -246,8 +246,9 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
         >
           {messages.length === 0 && (
             <div className="flex-1 text-gray-400 flex items-center justify-center">
-              <span className="opacity-60">
-                Start the lesson chat <b>{lessonId}</b>!
+              <span className="opacity-80 text-center">
+                Welcome to the lesson chat!<br />
+                Type your first question or message to start interacting with the assistant.
               </span>
             </div>
           )}
@@ -375,6 +376,12 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
             placeholder="Type your message..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (input.trim()) handleSend();
+              }
+            }}
             rows={1}
           />
           <button
