@@ -1,4 +1,8 @@
+
+
 import os
+from flask_cors import CORS
+from flask_cors import CORS
 
 from flask import Flask, render_template, request, jsonify, session
 
@@ -13,8 +17,12 @@ import backend.util.util_audio as ua
 import uuid
 from backend.util import util_llm
 
+
+
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
+CORS(app, origins=["http://localhost:3000"])
+CORS(app)
 
 chatbot: FlowChatbot = FlowChatbot(
     archivoDeUsuario=key.require("ARCHIVO_USUARIO_DIR"),
@@ -54,7 +62,7 @@ def chat():
     print("DEBUG ▶︎ Salida del grafo:", respuestaModelo)
     return jsonify(respuestaModelo)
 
-@app.route("/audio", methods=["POST"])
+@app.route("/audio", methods=["POST", "OPTIONS"])
 def audio():
     try:
         datos = request.get_json()

@@ -1,10 +1,47 @@
 "use client";
+import "./scrollbar.css";
 import React from "react";
 
 const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
   const [messages, setMessages] = React.useState<
     { role: "user" | "bot"; content: string }[]
   >([]);
+  const [playingIndex, setPlayingIndex] = React.useState<number | null>(null);
+  // Reproducir texto usando SpeechSynthesis API (TTS local)
+  const handlePlayAudio = (text: string, idx: number) => {
+    setPlayingIndex(idx);
+    const synth = window.speechSynthesis;
+    if (!synth) {
+      alert("Tu navegador no soporta síntesis de voz");
+      setPlayingIndex(null);
+      return;
+    }
+    // Detección simple de idioma
+    let lang = "es-ES";
+    if (/\b(the|and|you|hello|hi|what|is|are|to|from|with|for|your|my|me|yes|no|please|thanks|thank you)\b/i.test(text)) {
+      lang = "en-US";
+    } else if (/\b(olá|obrigado|por favor|você|eu|meu|minha|sim|não)\b/i.test(text)) {
+      lang = "pt-BR";
+    }
+    const utter = new window.SpeechSynthesisUtterance(text);
+    utter.lang = lang;
+    // Buscar voz adecuada (prioridad: nombre incluye español/spanish, luego lang exacto, luego lang parcial)
+    const voices = synth.getVoices();
+    let match = null;
+    if (lang === "es-ES") {
+      match = voices.find(v => v.lang === "es-ES" && /español|spanish/i.test(v.name));
+      if (!match) match = voices.find(v => v.lang === "es-ES");
+      if (!match) match = voices.find(v => v.lang.startsWith("es"));
+    } else {
+      match = voices.find(v => v.lang === lang);
+      if (!match) match = voices.find(v => v.lang.startsWith(lang.split('-')[0]));
+    }
+    if (match) utter.voice = match;
+    utter.onend = () => setPlayingIndex(null);
+    utter.onerror = () => setPlayingIndex(null);
+    synth.cancel(); // Detener cualquier voz anterior
+    synth.speak(utter);
+  };
   const [loading, setLoading] = React.useState(false);
   const [input, setInput] = React.useState("");
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
@@ -142,7 +179,7 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
     <div className="h-full w-full flex flex-col justify-end bg-[#18181b] rounded-xl p-4 shadow-inner">
       <div
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto pr-2 mb-2 flex flex-col gap-2"
+        className="flex-1 overflow-y-auto pr-2 mb-2 flex flex-col gap-2 custom-scrollbar"
         style={{ minHeight: 200 }}
       >
         {messages.length === 0 && (
@@ -166,17 +203,46 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
                 </div>
               </div>
             )}
-            <div
-              className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-md text-sm whitespace-pre-line transition-all duration-200
-                ${msg.role === "user"
-                  ? "bg-[#23242a] text-white rounded-br-md border border-[#343541]"
-                  : "bg-[#10a37f]/10 text-[#10a37f] rounded-bl-md border border-[#10a37f]/30"}
-              `}
-              style={{ animationDelay: `${i * 60}ms` }}
-            >
-              {msg.content}
-              {loading && i === messages.length - 1 && msg.role === "bot" && (
-                <span className="ml-2 animate-pulse">...</span>
+            <div className="flex items-center max-w-[75%]">
+              <div
+                className={`flex-1 px-4 py-2 rounded-2xl shadow-md text-sm whitespace-pre-line transition-all duration-200
+                  ${msg.role === "user"
+                    ? "bg-[#23242a] text-white rounded-br-md border border-[#343541]"
+                    : "bg-[#10a37f]/10 text-[#10a37f] rounded-bl-md border border-[#10a37f]/30"}
+                `}
+                style={{ animationDelay: `${i * 60}ms` }}
+              >
+                {msg.content}
+                {loading && i === messages.length - 1 && msg.role === "bot" && (
+                  <span className="ml-2 animate-pulse">...</span>
+                )}
+              </div>
+              {msg.role === "bot" && (
+                playingIndex === i ? (
+                  <button
+                    className="ml-2 w-8 h-8 flex items-center justify-center rounded-full border border-[#10a37f]/30 bg-[#10a37f]/10 text-[#10a37f] hover:bg-[#10a37f]/20 transition animate-pulse"
+                    title="Detener audio"
+                    onClick={() => {
+                      window.speechSynthesis.cancel();
+                      setPlayingIndex(null);
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                      <rect x="6" y="6" width="12" height="12" rx="2" />
+                    </svg>
+                  </button>
+                ) : (
+                  <button
+                    className="ml-2 w-8 h-8 flex items-center justify-center rounded-full border border-[#10a37f]/30 bg-[#10a37f]/10 text-[#10a37f] hover:bg-[#10a37f]/20 transition"
+                    title="Reproducir audio"
+                    onClick={() => handlePlayAudio(msg.content, i)}
+                    disabled={playingIndex !== null}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.25v13.5l12-6.75-12-6.75z" />
+                    </svg>
+                  </button>
+                )
               )}
             </div>
             {msg.role === "user" && (
@@ -211,23 +277,35 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
         autoComplete="off"
       >
         <div className="flex-1 flex items-end gap-2 bg-[#23242a] rounded-2xl shadow-inner px-3 py-2 border border-[#343541]">
-          <button
-            type="button"
-            className={`w-10 h-10 flex items-center justify-center rounded-full border transition shadow-sm mr-2 ${recording ? "bg-red-600 border-red-600 text-white animate-pulse" : "bg-[#23242a] border-[#343541] text-[#38bdf8] hover:bg-[#1e293b] hover:text-[#0ea5e9]"}`}
-            title={recording ? "Grabando..." : "Enviar audio"}
-            onClick={handleAudioClick}
-            disabled={loading || recognizing}
-          >
-            {recording ? (
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto animate-pulse">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75v1.5m0 0a6 6 0 0 1-6-6v-2.25m12 0v2.25a6 6 0 0 1-6 6zm0 0v-1.5m0 0a3 3 0 0 0 3-3v-3a3 3 0 0 0-6 0v3a3 3 0 0 0 3 3z" />
+          {recording ? (
+            <button
+              type="button"
+              className="w-10 h-10 flex items-center justify-center rounded-full border border-red-600 bg-red-600 text-white animate-pulse shadow-sm mr-2"
+              title="Detener grabación"
+              onClick={() => {
+                recognitionRef.current?.stop();
+                setRecording(false);
+                setRecognizing(false);
+              }}
+              disabled={loading}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
+                <rect x="6" y="6" width="12" height="12" rx="2" />
               </svg>
-            ) : (
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="w-10 h-10 flex items-center justify-center rounded-full border transition shadow-sm mr-2 bg-[#23242a] border-[#343541] text-[#38bdf8] hover:bg-[#1e293b] hover:text-[#0ea5e9]"
+              title="Enviar audio"
+              onClick={handleAudioClick}
+              disabled={loading || recognizing}
+            >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mx-auto">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75v1.5m0 0a6 6 0 0 1-6-6v-2.25m12 0v2.25a6 6 0 0 1-6 6zm0 0v-1.5m0 0a3 3 0 0 0 3-3v-3a3 3 0 0 0-6 0v3a3 3 0 0 0 3 3z" />
               </svg>
-            )}
-          </button>
+            </button>
+          )}
           <textarea
             ref={textareaRef}
             className="flex-1 resize-none rounded-xl px-4 py-3 bg-transparent text-white border-none focus:outline-none min-h-[40px] max-h-40 transition-all placeholder:text-gray-400"

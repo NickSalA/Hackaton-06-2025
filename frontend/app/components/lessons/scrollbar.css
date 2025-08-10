@@ -1,0 +1,17 @@
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #10a37f #23242a;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  background: #23242a;
+  border-radius: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #10a37f 0%, #22d3ee 100%);
+  border-radius: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #22d3ee 0%, #10a37f 100%);
+}
