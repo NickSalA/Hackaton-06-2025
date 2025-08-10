@@ -234,12 +234,12 @@ class FlowChatbot:
             "node_a4_informacionPorRecordar", "nodo_a5_agenteDeSupervision"
         )
         constructor.add_conditional_edges(
-            "node_router",
+            "nodo_a5_agenteDeSupervision",
             lambda state: state["accion"],
-            {"RESUMEN": "node_a7_agenteDeResumen", "CHAT": "node_a5_agenteDeChatbot"},
+            {"RESUMEN": "node_a7_agenteDeResumen", "CHAT": "node_a6_agenteDeChatbot"},
         )
 
-        constructor.set_finish_point("node_a5_agenteDeChatbot")
+        constructor.set_finish_point("node_a6_agenteDeChatbot")
         constructor.set_finish_point("node_a2_promptNoValido")
         constructor.set_finish_point("node_a7_agenteDeResumen")
 
