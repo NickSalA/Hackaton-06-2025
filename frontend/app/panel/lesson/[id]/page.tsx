@@ -8,7 +8,6 @@ interface LessonPageProps {
   params: { id: string };
 }
 
-
 export default async function LessonPage({ params }: LessonPageProps) {
   const { id } = params;
   const lesson = await prisma.lesson.findUnique({ where: { id } });
