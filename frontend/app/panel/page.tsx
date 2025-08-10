@@ -1,13 +1,58 @@
+
 import { getServerSession } from "next-auth";
 import { authOptions } from "../lib/auth-options";
 import { redirect } from "next/navigation";
 import Navbar from "../components/shared/Navbar";
+import { prisma } from "../lib/auth";
 
 
 export default async function PanelPage() {
   const session = await getServerSession(authOptions);
   if (!session) {
     redirect("/login");
+  }
+
+  // Obtener el primer curso (puedes ajustar la lógica si hay más de uno o si quieres uno específico)
+  const course = await prisma.course.findFirst({ orderBy: { createdAt: "asc" } });
+  const courseId = course?.id || "";
+
+  // Lessons y progreso
+  let lessonsCompleted = 0;
+  let totalLessons = 0;
+  let percentCompleted = 0;
+  if (courseId && session?.user?.email) {
+    // Total de lecciones del curso
+    totalLessons = await prisma.lesson.count({ where: { courseId } });
+    // Usuario
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (user) {
+      // Lecciones completadas por el usuario
+      lessonsCompleted = await prisma.progress.count({
+        where: {
+          userId: user.id,
+          status: "COMPLETED",
+          lesson: { courseId },
+        },
+      });
+    }
+    percentCompleted = totalLessons > 0 ? Math.round((lessonsCompleted / totalLessons) * 100) : 0;
+  }
+
+  // Obtener la racha (streak) desde el API
+  let streak = 0;
+  if (courseId) {
+    // En SSR Next.js 13+, fetch requiere URL absoluta
+    let baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    if (!baseUrl) {
+      // fallback: intenta usar localhost
+      baseUrl = "http://localhost:3000";
+    }
+    const apiUrl = `${baseUrl}/api/access-log?courseId=${courseId}`;
+    const res = await fetch(apiUrl, { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      streak = data.streak || 0;
+    }
   }
 
   return (
@@ -33,7 +78,7 @@ export default async function PanelPage() {
                   <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M16 10v6l4 2' stroke='#10a37f' />
                 </svg>
               </span>
-              <span className="text-4xl font-extrabold text-[#10a37f] mb-2">0%</span>
+              <span className="text-4xl font-extrabold text-[#10a37f] mb-2">{percentCompleted}%</span>
               <span className="text-gray-200 font-medium">Course Completed</span>
             </div>
             <div className="backdrop-blur-md bg-white/5 border border-[#22d3ee]/30 rounded-2xl p-8 shadow-xl flex flex-col items-center transition-transform duration-300 hover:scale-105 hover:border-[#22d3ee]">
@@ -43,7 +88,7 @@ export default async function PanelPage() {
                   <path d='M10 20l6-6 6 6' stroke='#22d3ee' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' fill='none'/>
                 </svg>
               </span>
-              <span className="text-4xl font-extrabold text-[#22d3ee] mb-2">0</span>
+              <span className="text-4xl font-extrabold text-[#22d3ee] mb-2">{lessonsCompleted}</span>
               <span className="text-gray-200 font-medium">Lessons Completed</span>
             </div>
             <div className="backdrop-blur-md bg-white/5 border border-[#fbbf24]/30 rounded-2xl p-8 shadow-xl flex flex-col items-center transition-transform duration-300 hover:scale-105 hover:border-[#fbbf24]">
@@ -54,7 +99,7 @@ export default async function PanelPage() {
                   <circle cx='16' cy='22' r='2' fill='#fbbf24'/>
                 </svg>
               </span>
-              <span className="text-4xl font-extrabold text-[#fbbf24] mb-2">0</span>
+              <span className="text-4xl font-extrabold text-[#fbbf24] mb-2">{streak}</span>
               <span className="text-gray-200 font-medium">Streak</span>
             </div>
           </div>
