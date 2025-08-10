@@ -138,7 +138,7 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
             tipo: "texto",
             contenido: userMsg.content,
           },
-          lessonId,
+          leccion: lessonId,
         }),
       });
       const data = await res.json();

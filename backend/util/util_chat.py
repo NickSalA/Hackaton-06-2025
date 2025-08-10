@@ -23,7 +23,7 @@ def abrirSesionDeChat(llm=None, contexto: str = "", memoria = None):
 
 # Abre una sesión de chat y adjunta una base de conocimiento
 def abrirSesionDeChatConBaseDeConocimiento(
-    llm=None, basesDeConocimiento=None, contexto: str = "", memoria = None
+    llm=None, basesDeConocimiento=None, contexto: str = "", memoria = None, leccion: str | None = None
 ):
     if memoria is None:
         memoria = ConversationBufferMemory()
