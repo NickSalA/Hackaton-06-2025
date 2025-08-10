@@ -8,8 +8,9 @@ interface LessonPageProps {
   params: { id: string };
 }
 
-export default function LessonPage({ params }: LessonPageProps) {
-  const lesson = lessons.find((l: Lesson) => l.id === params.id);
+export default async function LessonPage({ params }: LessonPageProps) {
+  const { id } = await params;
+  const lesson = lessons.find((l: Lesson) => l.id === id);
   if (!lesson) return notFound();
 
   return (
