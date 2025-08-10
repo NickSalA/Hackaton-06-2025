@@ -1,172 +1,85 @@
-from backend.util.util_env import require as key
-import backend.util.util_excel as excel_util
+# util_sincronizacion.py
+from typing import Iterable, Dict, Any
+import os, time, uuid, pathlib, json
 
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.schema import Document
-from azure.core.credentials import AzureKeyCredential
 from azure.search.documents import SearchClient
-from azure.ai.formrecognizer import DocumentAnalysisClient
+from azure.core.credentials import AzureKeyCredential
+from openai import AzureOpenAI
 
-# Librería para controlar la ejecución del código
-import time
+from src.util.util_env import require as key
 
-# Librería para generar identificadores únicos
-import uuid
-# Librería para manipular el sistema operativa
-import os
+def _get_search_client(index_name: str) -> SearchClient:
+    endpoint = key("CONF_AZURE_SEARCH_ENDPOINT")
+    api_key  = key("CONF_AZURE_SEARCH_ADMIN_KEY")  # o QUERY_KEY si es lo que usas
+    return SearchClient(endpoint=endpoint,
+                        index_name=index_name,
+                        credential=AzureKeyCredential(api_key))
 
-# Librería con utilitarios para procesar archivos
-import shutil
-
-# Función para obtener los archivos de una ruta
-def obtenerArchivos(ruta=None):
-    # Listamos el contenido de la carpeta
-    os.listdir(ruta)
-
-    # Acumulamos los archivos encontrados
-    listaDeArchivos = []
-    for elemento in os.listdir(ruta):
-        rutaCompleta = os.path.join(ruta, elemento)  # type: ignore
-
-        # Solo añadimos si es archivo (no directorio)
-        if os.path.isfile(rutaCompleta):
-            listaDeArchivos.append(rutaCompleta)
-
-    return listaDeArchivos
-
-# Extrae el contenido de un archivo
-def leerContenidoDeDocumento(rutaArchivo):
-
-    # Nos conectamos al servicio
-    servicio = DocumentAnalysisClient(
-        key("CONF_AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT"),
-        AzureKeyCredential(key("CONF_AZURE_DOCUMENT_INTELLIGENCE_KEY")),
+def _get_embeddings_client() -> AzureOpenAI:
+    return AzureOpenAI(
+        api_key=key("CONF_OPENAI_API_KEY"),
+        api_version=key("CONF_API_VERSION"),
+        azure_endpoint=key("CONF_AZURE_ENDPOINT"),
     )
 
-    # Abrimos el documento que queremos analizar
-    with open(rutaArchivo, "rb") as archivo:
+def _embed_texts(texts: list[str]) -> list[list[float]]:
+    """Devuelve embeddings 1536D. Usa tu deployment de embeddings."""
+    client = _get_embeddings_client()
+    deployment = key("CONF_AZURE_EMBEDDINGS_DEPLOYMENT")  # ej. text-embedding-3-small ó ada-002
+    resp = client.embeddings.create(model=deployment, input=texts)
+    return [d.embedding for d in resp.data]
 
-        # Damos la instruccion de lectura
-        instruccion = servicio.begin_analyze_document("prebuilt-read", archivo)
+def _chunk(text: str, max_chars: int = 1500) -> list[str]:
+    # sencillo por chars; si quieres más fino, usa tiktoken por tokens
+    text = (text or "").strip()
+    out = []
+    i = 0
+    while i < len(text):
+        out.append(text[i:i+max_chars])
+        i += max_chars
+    return out or [""]
 
-        # Ejecutamos la instruccion para leer
-        resultado = instruccion.result()
+def _build_docs_para_archivo(path: pathlib.Path, leccion: str, index_name: str) -> Iterable[Dict[str, Any]]:
+    raw = path.read_text(encoding="utf-8", errors="ignore")
+    trozos = _chunk(raw, max_chars=1600)
 
-    # Acumulador del contenido del archivo
-    contenido = ""
+    # Embeddings en batch
+    vectors = _embed_texts(trozos)
 
-    # Iteramos cada página leida
-    for pagina in resultado.pages:
+    for i, (texto, vec) in enumerate(zip(trozos, vectors)):
+        yield {
+            "id": f"{path.stem}__{i}__{uuid.uuid4().hex}",
+            "content": texto,
+            "contentVector": vec,
+            "leccion": leccion
+        }
 
-        # Iteramos cada linea para cada página
-        for linea in pagina.lines:
-
-            # Acumulamos el contenido
-            contenido = contenido + linea.content + "\n"
-
-    return contenido
-
-
-# Obtiene los chunks desde un texto leído
-def obtenerChunks(contenido: str = ""):
-    # Creamos el documento con el texto que hemos extraido
-    documento: list[Document] = [Document(page_content=contenido)]
-
-    # Definimos cómo se crearán los chunks del texto
-    cortadorDeTexto = CharacterTextSplitter(
-        separator="\n",  # Enter
-        chunk_size=1000,  # Tamaño de cada fragmento
-        chunk_overlap=100,  # Superposición entre fragmentos
-    )
-
-    # Creamos los chunks
-    chunks = cortadorDeTexto.split_documents(documento)
-
-    # Información del documento que se almacena
-    chunksConIdentificadores = []
-
-    # Iteramos los chunks para darle la estructura
-    for chunk in chunks:
-
-        # Definimos la estructura del chunk que insertaremos con su identificador
-        estructuraDeChunk = {"id": str(uuid.uuid4()), "content": chunk.page_content}
-
-        # Lo agregamos al array
-        chunksConIdentificadores.append(estructuraDeChunk)
-
-    return chunksConIdentificadores
-
-
-# Carga un archivo en una base de conocimiento
-def cargarArchivo(rutaDeArchivo=None, nombreDeBaseDeConocimiento: str = ""):
-    # Leemos el contenido del archivo
-    contenido = leerContenidoDeDocumento(rutaDeArchivo)
-
-    # Creamos los chunks
-    chunks = obtenerChunks(contenido)
-
-    # Nos conectamos a la base de conocimiento
-    baseDeConocimiento = SearchClient(
-        f"https://{key("CONF_AZURE_SEARCH_SERVICE_NAME")}.search.windows.net",
-        nombreDeBaseDeConocimiento,
-        AzureKeyCredential(key("CONF_AZURE_SEARCH_KEY")),
-    )
-
-    # Insertamos los chunks en la base de conocimiento
-    resultadosDeInserciones = baseDeConocimiento.upload_documents(chunks)
-
-    return resultadosDeInserciones
-
-
-# Sincroniza los documentos de una ruta a una base de conocimiento
 def sincronizarBaseDeConocimiento(
-    carpeta=None, nombreDeBaseDeConocimiento:str="", tiempoDeEspera: int = 5
+    carpeta: str,
+    nombreDeBaseDeConocimiento: str,
+    tiempoDeEspera: int = 0,
+    leccion_por_defecto: str = "general"
 ):
-    archivos_procesados = set()  # Guardamos nombres de archivos ya procesados
+    """
+    Sube documentos al índice 'nombreDeBaseDeConocimiento' (ej: 'curso-index'),
+    rellenando id, content, contentVector (1536D) y leccion.
+    """
+    index_name = nombreDeBaseDeConocimiento  # p.ej. "curso-index"
+    sc = _get_search_client(index_name)
+    base = pathlib.Path(carpeta)
 
-    while True:
-        print("Ejecutando sincronización...")
+    # Estrategia para 'leccion': usa nombre de subcarpeta; si no, el valor por defecto.
+    for subpath in base.rglob("*"):
+        if not subpath.is_file():
+            continue
+        leccion = subpath.parent.name if subpath.parent != base else leccion_por_defecto
 
-        listaDeArchivos = obtenerArchivos(ruta=carpeta)
+        docs = list(_build_docs_para_archivo(subpath, leccion, index_name))
+        # Azure Search recomienda lotes de ~1000 docs o <16MB por batch
+        # aquí subimos en bloques pequeños
+        for i in range(0, len(docs), 100):
+            batch = docs[i:i+100]
+            sc.upload_documents(batch)
+            if tiempoDeEspera:
+                time.sleep(tiempoDeEspera)
 
-        if len(listaDeArchivos) >= 1:
-            for archivo in listaDeArchivos:
-                nombre_archivo = os.path.basename(archivo)
-
-                # Saltamos si ya fue procesado
-                if nombre_archivo in archivos_procesados:
-                    continue
-
-                print(f"Cargando archivo: {archivo}")
-
-                try:
-                    if excel_util.esArchivoExcel(archivo):
-                        print("Archivo Excel detectado.")
-                        resultados = excel_util.cargarArchivoExcel(
-                            rutaDeArchivo=archivo,
-                            nombreDeBaseDeConocimiento=nombreDeBaseDeConocimiento,
-                        )
-                        archivos_procesados.add(nombre_archivo)
-                        os.remove(archivo)
-                        print("Archivo Excel procesado y eliminado correctamente.")
-                        continue
-
-                    # Si no es Excel, sigue el flujo normal
-                    resultadosDeInserciones = cargarArchivo(
-                        rutaDeArchivo=archivo,
-                        nombreDeBaseDeConocimiento=nombreDeBaseDeConocimiento,
-                    )
-                    os.remove(archivo)
-                    print("Archivo procesado y eliminado correctamente.")
-
-                except Exception as e:
-                    print(f"Ocurrió un error al sincronizar: {e}")
-                    if carpeta:
-                        carpetaDeErrores: str = os.path.join(
-                            carpeta, "errores/", str(uuid.uuid4()) + "/"
-                        )
-                    print(f"Moviendo archivo a carpeta de errores: {carpetaDeErrores}")
-                    os.makedirs(carpetaDeErrores, exist_ok=True)
-                    shutil.move(archivo, carpetaDeErrores)
-
-        time.sleep(tiempoDeEspera)
