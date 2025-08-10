@@ -17,7 +17,7 @@ app.secret_key = os.urandom(24)
 
 chatbot: FlowChatbot = FlowChatbot(
     archivoDeUsuario=key.require("ARCHIVO_USUARIO_DIR"),
-    basesDeConocimiento=ubc.obtenerBaseDeConocimiento(),
+    basesDeConocimiento=ubc.obtenerBaseDeConocimiento("fundamentos"),
 )
 
 chatbot.grafo = chatbot.constructor.compile(checkpointer=InMemorySaver())

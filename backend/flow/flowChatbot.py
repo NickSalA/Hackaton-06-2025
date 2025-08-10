@@ -47,7 +47,7 @@ class FlowChatbot:
 
         # --- Instancias de agentes ---
         self.agenteDeContexto = AgenteDeContexto(
-            llm=obtenerModelo(temperature=0.2),
+            llm=obtenerModelo(),
             condiciones=(
                 """
                 Como mínimo debe cumplirse TODAS estas condiciones a la vez:
@@ -62,7 +62,7 @@ class FlowChatbot:
         )
 
         self.agenteDeMemoriaLargoPlazo = AgenteDeMemoriaLargoPlazo(
-            llm=obtenerModelo(temperature=0.2),
+            llm=obtenerModelo(),
             condiciones=(
                 """
                 - El nombre del usuario
@@ -104,7 +104,7 @@ class FlowChatbot:
         )
 
         self.agenteDeAnalisis = AgenteDeAnalisis(
-            llm=obtenerModelo(temperature=0.2),
+            llm=obtenerModelo(),
             descripcion=(
                 """
                 Para un texto, si hay informacion que se contradicen entre sí
@@ -118,7 +118,7 @@ class FlowChatbot:
         )
 
         self.agenteDeResumen = AgenteDeResumen(llm=obtenerModelo())
-        self.AgenteDeSupervision = AgenteDeSupervision(llm=obtenerModelo(temperature=0))
+        self.AgenteDeSupervision = AgenteDeSupervision(llm=obtenerModelo())
 
         # --- Construcción del grafo ---
         self._construir_grafo()
@@ -234,12 +234,12 @@ class FlowChatbot:
             "node_a4_informacionPorRecordar", "nodo_a5_agenteDeSupervision"
         )
         constructor.add_conditional_edges(
-            "node_router",
+            "nodo_a5_agenteDeSupervision",
             lambda state: state["accion"],
-            {"RESUMEN": "node_a7_agenteDeResumen", "CHAT": "node_a5_agenteDeChatbot"},
+            {"RESUMEN": "node_a7_agenteDeResumen", "CHAT": "node_a6_agenteDeChatbot"},
         )
 
-        constructor.set_finish_point("node_a5_agenteDeChatbot")
+        constructor.set_finish_point("node_a6_agenteDeChatbot")
         constructor.set_finish_point("node_a2_promptNoValido")
         constructor.set_finish_point("node_a7_agenteDeResumen")
 
