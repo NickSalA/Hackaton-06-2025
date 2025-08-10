@@ -53,6 +53,7 @@ def chat():
     # 3. Ejecuta el flujo y devuelve la respuesta
     config: RunnableConfig = {"configurable": {"thread_id": session["thread_id"]}}
     try:
+        usarBase = "fundamentos"
         respuestaModelo = chatbot.ejecutar(
             prompt=promptUsuario, base=usarBase, config=config
         )
