@@ -51,7 +51,7 @@ export default function Home() {
               {/* Logo centrado sobre la animación */}
               {/* Optimized logo with Next.js Image */}
               <Image
-                src="/profai_logo.png"
+                src="/ai_teacher_logo.png"
                 alt="ProfAI Logo"
                 width={90}
                 height={90}

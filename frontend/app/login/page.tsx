@@ -33,7 +33,7 @@ export default function LoginPage() {
           </svg>
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
             <Image
-              src="/profai_logo.png"
+              src="/ai_teacher_logo.png"
               alt="ProfAI Logo"
               width={200}
               height={200}
