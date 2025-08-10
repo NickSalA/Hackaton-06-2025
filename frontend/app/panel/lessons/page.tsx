@@ -3,13 +3,18 @@ import { authOptions } from "../../lib/auth-options";
 import { redirect } from "next/navigation";
 import Navbar from "../../components/shared/Navbar";
 import LessonsList from "../../components/lessons/LessonsList";
-import { lessons } from "../../data/lessons";
+import { prisma } from "../../../lib/prisma";
 
 export default async function LessonsPage() {
   const session = await getServerSession(authOptions);
   if (!session) {
     redirect("/login");
   }
+
+  // Obtener las lecciones desde la base de datos
+  const lessons = await prisma.lesson.findMany({
+    orderBy: { createdAt: "asc" },
+  });
 
   return (
     <>
@@ -23,7 +28,8 @@ export default async function LessonsPage() {
             Course: <span className="font-bold">Prompt Engineering</span>
           </p>
           <p className="text-gray-300 text-base md:text-lg max-w-2xl mx-auto">
-            Explore the lessons and master the art of creating effective prompts for AI.
+            Explore the lessons and master the art of creating effective prompts
+            for AI.
           </p>
         </div>
         <div className="w-full max-w-4xl mx-auto">

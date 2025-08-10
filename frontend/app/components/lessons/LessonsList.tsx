@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import type { Lesson } from "../../data/lessons";
+import type { Lesson } from "@prisma/client";
 import LessonCard from "./LessonCard";
 import { useRouter } from "next/navigation";
 
