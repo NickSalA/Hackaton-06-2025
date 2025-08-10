@@ -63,20 +63,14 @@ def chat():
     print("DEBUG ▶︎ Salida del grafo:", respuestaModelo)
     return jsonify(respuestaModelo)
 
-@app.route("/audio", methods=["POST", "OPTIONS"])
-def audio():
+@app.route("/reset", methods=["POST"])
+def reset():
     try:
-        datos = request.get_json()
-        prompt = util_app.obtener_prompt(datos)
-        lan: str = ua.detectar_lenguaje(prompt, util_llm.obtenerModeloModerno())
-        audio_base64: str | None = ua.texto_a_voz(prompt, voice=lan)
-
-        if audio_base64 is None:
-            return jsonify({"error": "No se pudo sintetizar el texto a voz"}), 500
-
-        return jsonify({"contenido": "audio", "valor": audio_base64})
+        chatbot.reiniciar_memoria_del_chatbot()
+        return jsonify({"status": "ok", "mensaje": "Memoria reiniciada"}), 200
     except Exception as e:
-        return jsonify({"error": f"Error interno del servidor: {str(e)}"}), 500
+        return jsonify({"status": "error", "detalle": str(e)}), 500
+
 
 
 if __name__ == "__main__":
