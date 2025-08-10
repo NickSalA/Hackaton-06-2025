@@ -76,7 +76,3 @@ Edita `frontend/prisma/seed-lessons.js` para personalizar ids, títulos, mensaje
 ## Tecnologías
 
 - Next.js 15, React 19, TailwindCSS 4, Prisma 6, NextAuth, React Markdown, Flask (Python).
-
-## Licencia
-
-MIT
