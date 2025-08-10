@@ -1,0 +1,19 @@
+{
+  "name": "AI Teacher",
+  "short_name": "AI Teacher",
+  "icons": [
+    {
+      "src": "/logo_image.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "/logo_image.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ],
+  "theme_color": "#10a37f",
+  "background_color": "#18181b",
+  "display": "standalone"
+}
