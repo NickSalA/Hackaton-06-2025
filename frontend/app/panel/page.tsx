@@ -1,13 +1,36 @@
+
 import { getServerSession } from "next-auth";
 import { authOptions } from "../lib/auth-options";
 import { redirect } from "next/navigation";
 import Navbar from "../components/shared/Navbar";
+import { prisma } from "../lib/auth";
 
 
 export default async function PanelPage() {
   const session = await getServerSession(authOptions);
   if (!session) {
     redirect("/login");
+  }
+
+  // Obtener el primer curso (puedes ajustar la lógica si hay más de uno o si quieres uno específico)
+  const course = await prisma.course.findFirst({ orderBy: { createdAt: "asc" } });
+  const courseId = course?.id || "";
+
+  // Obtener la racha (streak) desde el API
+  let streak = 0;
+  if (courseId) {
+    // En SSR Next.js 13+, fetch requiere URL absoluta
+    let baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    if (!baseUrl) {
+      // fallback: intenta usar localhost
+      baseUrl = "http://localhost:3000";
+    }
+    const apiUrl = `${baseUrl}/api/access-log?courseId=${courseId}`;
+    const res = await fetch(apiUrl, { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      streak = data.streak || 0;
+    }
   }
 
   return (
@@ -54,7 +77,7 @@ export default async function PanelPage() {
                   <circle cx='16' cy='22' r='2' fill='#fbbf24'/>
                 </svg>
               </span>
-              <span className="text-4xl font-extrabold text-[#fbbf24] mb-2">0</span>
+              <span className="text-4xl font-extrabold text-[#fbbf24] mb-2">{streak}</span>
               <span className="text-gray-200 font-medium">Streak</span>
             </div>
           </div>

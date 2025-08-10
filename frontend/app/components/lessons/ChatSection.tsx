@@ -6,6 +6,26 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
   const [messages, setMessages] = React.useState<
     { role: "user" | "bot"; content: string }[]
   >([]);
+  // Cargar mensajes desde la BD al montar
+  React.useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        const res = await fetch(`/api/chat-message?lessonId=${lessonId}`);
+        if (res.ok) {
+          const data = await res.json();
+          // El backend devuelve { role: "user"|"assistant", content }
+          setMessages(
+            data.map((m: any) => ({
+              role: m.role === "assistant" ? "bot" : "user",
+              content: m.content,
+            }))
+          );
+        }
+      } catch {}
+    };
+    fetchMessages();
+  }, [lessonId]);
+  // ...existing code...
   const [playingIndex, setPlayingIndex] = React.useState<number | null>(null);
   // Reproducir texto usando SpeechSynthesis API (TTS local)
   const handlePlayAudio = (text: string, idx: number) => {
@@ -73,6 +93,13 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
     setInput("");
     setLoading(true);
     try {
+      // Guardar mensaje de usuario en la BD
+      await fetch("/api/chat-message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lessonId, content: userMsg.content, role: "user" }),
+      });
+      // Obtener respuesta del agente
       const res = await fetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -93,6 +120,12 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
         ...msgs,
         { role: "bot", content: botMsg || "(No response from agent)" },
       ]);
+      // Guardar respuesta del bot en la BD
+      await fetch("/api/chat-message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lessonId, content: botMsg, role: "assistant" }),
+      });
     } catch (e) {
       setMessages((msgs) => [
         ...msgs,
@@ -103,6 +136,17 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
     }
   };
 
+
+  // Borrar historial de chat
+  const handleDeleteChat = async () => {
+    setLoading(true);
+    try {
+      await fetch(`/api/chat-message?lessonId=${lessonId}`, { method: "DELETE" });
+      setMessages([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // --- AUDIO (Web Speech API) ---
   const handleAudioClick = () => {
@@ -134,6 +178,7 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
           ...msgs,
           { role: "user", content: transcript },
         ]);
+  // ...existing code...
         setLoading(true);
         try {
           const res = await fetch("/api/agent", {
@@ -153,6 +198,7 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
             ...msgs,
             { role: "bot", content: botMsg || "(Sin respuesta del agente)" },
           ]);
+          // ...existing code...
         } catch {
           setMessages((msgs) => [
             ...msgs,
@@ -175,102 +221,119 @@ const ChatSection: React.FC<{ lessonId: string }> = ({ lessonId }) => {
     recognition.start();
   };
 
+  // ...existing code...
+
   return (
     <div className="h-full w-full flex flex-col justify-end bg-[#18181b] rounded-xl p-4 shadow-inner">
-      <div
-        ref={chatContainerRef}
-        className="flex-1 overflow-y-auto pr-2 mb-2 flex flex-col gap-2 custom-scrollbar"
-        style={{ minHeight: 200 }}
-      >
-        {messages.length === 0 && (
-          <div className="flex-1 text-gray-400 flex items-center justify-center">
-            <span className="opacity-60">
-              Start the lesson chat <b>{lessonId}</b>!
-            </span>
-          </div>
-        )}
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`flex w-full animate-fade-in ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            {msg.role === "bot" && (
-              <div className="flex items-end mr-2">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#10a37f] to-[#22d3ee] flex items-center justify-center text-white font-bold shadow">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 0v4m0 8v4m-4-4h8" />
-                  </svg>
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-gray-400 text-sm">Chat</span>
+        <button
+          className="ml-2 p-1 rounded-full border border-red-400 text-red-400 hover:bg-red-400 hover:text-white transition"
+          onClick={handleDeleteChat}
+          disabled={loading}
+          title="Borrar historial"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12a7.5 7.5 0 1 1 2.1 5.3M4.5 12V7.5m0 4.5h4.5" />
+          </svg>
+        </button>
+      </div>
+      {/* ...existing code... */}
+        <div
+          ref={chatContainerRef}
+          className="flex-1 overflow-y-auto pr-2 mb-2 flex flex-col gap-2 custom-scrollbar"
+          style={{ minHeight: 200 }}
+        >
+          {messages.length === 0 && (
+            <div className="flex-1 text-gray-400 flex items-center justify-center">
+              <span className="opacity-60">
+                Start the lesson chat <b>{lessonId}</b>!
+              </span>
+            </div>
+          )}
+          {messages.map((msg, i) => (
+            <div
+              key={i}
+              className={`flex w-full animate-fade-in ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            >
+              {msg.role === "bot" && (
+                <div className="flex items-end mr-2">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#10a37f] to-[#22d3ee] flex items-center justify-center text-white font-bold shadow">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 0v4m0 8v4m-4-4h8" />
+                    </svg>
+                  </div>
                 </div>
-              </div>
-            )}
-            <div className="flex items-center max-w-[75%]">
-              <div
-                className={`flex-1 px-4 py-2 rounded-2xl shadow-md text-sm whitespace-pre-line transition-all duration-200
-                  ${msg.role === "user"
-                    ? "bg-[#23242a] text-white rounded-br-md border border-[#343541]"
-                    : "bg-[#10a37f]/10 text-[#10a37f] rounded-bl-md border border-[#10a37f]/30"}
-                `}
-                style={{ animationDelay: `${i * 60}ms` }}
-              >
-                {msg.content}
-                {loading && i === messages.length - 1 && msg.role === "bot" && (
-                  <span className="ml-2 animate-pulse">...</span>
+              )}
+              <div className="flex items-center max-w-[75%]">
+                <div
+                  className={`flex-1 px-4 py-2 rounded-2xl shadow-md text-sm whitespace-pre-line transition-all duration-200
+                    ${msg.role === "user"
+                      ? "bg-[#23242a] text-white rounded-br-md border border-[#343541]"
+                      : "bg-[#10a37f]/10 text-[#10a37f] rounded-bl-md border border-[#10a37f]/30"}
+                  `}
+                  style={{ animationDelay: `${i * 60}ms` }}
+                >
+                  {msg.content}
+                  {loading && i === messages.length - 1 && msg.role === "bot" && (
+                    <span className="ml-2 animate-pulse">...</span>
+                  )}
+                </div>
+                {msg.role === "bot" && (
+                  playingIndex === i ? (
+                    <button
+                      className="ml-2 w-8 h-8 flex items-center justify-center rounded-full border border-[#10a37f]/30 bg-[#10a37f]/10 text-[#10a37f] hover:bg-[#10a37f]/20 transition animate-pulse"
+                      title="Stop audio"
+                      onClick={() => {
+                        window.speechSynthesis.cancel();
+                        setPlayingIndex(null);
+                      }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                        <rect x="6" y="6" width="12" height="12" rx="2" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <button
+                      className="ml-2 w-8 h-8 flex items-center justify-center rounded-full border border-[#10a37f]/30 bg-[#10a37f]/10 text-[#10a37f] hover:bg-[#10a37f]/20 transition"
+                      title="Play audio"
+                      onClick={() => handlePlayAudio(msg.content, i)}
+                      disabled={playingIndex !== null}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.25v13.5l12-6.75-12-6.75z" />
+                      </svg>
+                    </button>
+                  )
                 )}
               </div>
-              {msg.role === "bot" && (
-                playingIndex === i ? (
-                  <button
-                    className="ml-2 w-8 h-8 flex items-center justify-center rounded-full border border-[#10a37f]/30 bg-[#10a37f]/10 text-[#10a37f] hover:bg-[#10a37f]/20 transition animate-pulse"
-                    title="Stop audio"
-                    onClick={() => {
-                      window.speechSynthesis.cancel();
-                      setPlayingIndex(null);
-                    }}
-                  >
+              {msg.role === "user" && (
+                <div className="flex items-end ml-2">
+                  <div className="w-8 h-8 rounded-full bg-[#23242a] border border-[#343541] flex items-center justify-center text-[#38bdf8] font-bold shadow">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                      <rect x="6" y="6" width="12" height="12" rx="2" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5.121 17.804A13.937 13.937 0 0 1 12 15c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" />
                     </svg>
-                  </button>
-                ) : (
-                  <button
-                    className="ml-2 w-8 h-8 flex items-center justify-center rounded-full border border-[#10a37f]/30 bg-[#10a37f]/10 text-[#10a37f] hover:bg-[#10a37f]/20 transition"
-                    title="Play audio"
-                    onClick={() => handlePlayAudio(msg.content, i)}
-                    disabled={playingIndex !== null}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.25v13.5l12-6.75-12-6.75z" />
-                    </svg>
-                  </button>
-                )
+                  </div>
+                </div>
               )}
             </div>
-            {msg.role === "user" && (
-              <div className="flex items-end ml-2">
-                <div className="w-8 h-8 rounded-full bg-[#23242a] border border-[#343541] flex items-center justify-center text-[#38bdf8] font-bold shadow">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.121 17.804A13.937 13.937 0 0 1 12 15c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" />
+          ))}
+          {loading && (
+            <div className="flex w-full justify-start animate-fade-in">
+              <div className="flex items-end mr-2">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#10a37f] to-[#22d3ee] flex items-center justify-center text-white font-bold shadow">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 animate-spin">
+                    <circle cx="12" cy="12" r="10" stroke="#10a37f" strokeWidth="2" fill="none" />
                   </svg>
                 </div>
               </div>
-            )}
-          </div>
-        ))}
-        {loading && (
-          <div className="flex w-full justify-start animate-fade-in">
-            <div className="flex items-end mr-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#10a37f] to-[#22d3ee] flex items-center justify-center text-white font-bold shadow">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 animate-spin">
-                  <circle cx="12" cy="12" r="10" stroke="#10a37f" strokeWidth="2" fill="none" />
-                </svg>
+              <div className="max-w-[75%] px-4 py-2 rounded-2xl shadow-md text-sm bg-[#10a37f]/10 text-[#10a37f] border border-[#10a37f]/30 rounded-bl-md animate-pulse">
+                Thinking...
               </div>
             </div>
-            <div className="max-w-[75%] px-4 py-2 rounded-2xl shadow-md text-sm bg-[#10a37f]/10 text-[#10a37f] border border-[#10a37f]/30 rounded-bl-md animate-pulse">
-              Thinking...
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      
       <form
         className="mt-4 flex gap-2 items-end"
         onSubmit={handleSend}
