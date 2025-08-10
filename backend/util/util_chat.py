@@ -52,6 +52,6 @@ def enviarMensajeEnChatConBaseDeConocimiento(
 ):
     # Enviamos el mensaje
     respuesta = chat.invoke(mensaje)
-
+    print("DEBUG ▶︎ Documentos recuperados:", respuesta.get("source_documents", []))
     # Extraemos el mensaje
     return respuesta["result"]

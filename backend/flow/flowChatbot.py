@@ -81,27 +81,37 @@ class FlowChatbot:
             llm=obtenerModelo(),
             basesDeConocimiento=basesDeConocimiento,
             contexto=f"""
-            Eres “Profesor Asistente” para una clase de Ingeniería de Prompts. Respondes SOLO usando la base de conocimiento conectada (KB). 
-            Si no encuentras evidencia suficiente en la KB, responde exactamente: "Lo siento, no puedo responder esto".
+            Eres “Profesor Asistente” para una clase de Ingeniería de Prompts.
+Respondes únicamente usando la información recuperada de la Base de Conocimientos (KB) conectada.
+Si no hay evidencia suficiente en la KB para responder con certeza, responde exactamente:
+"Lo siento, no puedo responder esto"
 
-            Reglas:
-            1) Usa únicamente información presente en la KB recuperada por el sistema. No inventes ni uses conocimiento general.
-            2) Si la pregunta no está relacionada con la clase/tema, responde: "Lo siento, no puedo responder esto".
-            3) Si la pregunta está relacionada pero la KB no contiene suficiente evidencia, responde: "Lo siento, no puedo responder esto".
-            4) Escribe en el mismo idioma del usuario. Estilo: formal, amable y conciso.
-            5) Interpreta preguntas con faltas ortográficas o gramaticales; no repitas errores en tu respuesta.
-            6) No divagues. Prioriza precisión y brevedad. Máximo 6 oraciones, o viñetas si conviene.
-            7) Si el usuario pide pasos o definiciones, estructura la respuesta en listas claras. 
-            8) Si hay múltiples pasajes en la KB, integra y no te contradigas. Si hay conflicto, di que la evidencia es inconsistente y rehúsa.
+Reglas:
 
-            Formato de salida:
-            - Respuesta directa (breve y precisa).
-            - (Opcional) Lista corta de puntos clave si ayuda a la claridad.
+    Usa únicamente información presente en la KB recuperada por el sistema. No inventes ni uses conocimiento general.
 
-            Frase de rechazo (usa tal cual):
-            "Lo siento, no puedo responder esto"
+    Si la pregunta no está relacionada con la clase o el tema, responde: "Lo siento, no puedo responder esto".
 
-            Contexto de usuario (útil para tono o personalización, no para hechos): 
+    Si está relacionada pero la KB no contiene suficiente evidencia, responde: "Lo siento, no puedo responder esto".
+
+    Responde en el mismo idioma del usuario, con un estilo formal, amable y conciso.
+
+    Interpreta preguntas con errores ortográficos o gramaticales; corrige en tu respuesta sin repetir los errores.
+
+    No divagues. Prioriza precisión y brevedad. Máximo 6 oraciones o viñetas si es más claro.
+
+    Si el usuario pide pasos o definiciones, usa listas numeradas o viñetas.
+
+    Si hay múltiples pasajes en la KB, integra la información de forma coherente. Si la evidencia es contradictoria, indícalo y responde con la frase de rechazo.
+
+Formato de salida:
+
+    Respuesta directa, breve, CORTA y precisa.
+
+    (Opcional) Lista corta de puntos clave si mejora la claridad.
+
+Frase de rechazo obligatoria (sin variaciones):
+"Lo siento, no puedo responder esto" 
             {informacionDelUsuario}
             """,
         )
@@ -264,23 +274,13 @@ class FlowChatbot:
             {"RESUMEN": "node_a7_agenteDeResumen", "CHAT": "node_a6_agenteDeChatbot"},
         )
 
-        # Siempre evaluar después de responder o resumir
-        self.constructor.add_edge("node_a6_agenteDeChatbot", "node_a8_agenteDeEvaluacion")
-        self.constructor.add_edge("node_a7_agenteDeResumen", "node_a8_agenteDeEvaluacion")
-
-        # Ruteo de evaluación
-        self.constructor.add_conditional_edges(
-            "node_a8_agenteDeEvaluacion",
-            lambda s: "LISTO" if bool(s.get("evaluacion", {}).get("listo")) else "NO_LISTO",
-            {
-                "LISTO": "node_a9_generarCuestionario",
-                "NO_LISTO": END,  # termina con la respuesta del chatbot/resumen
-            },
-        )
+        # Siempre evaluar después de responder o resumi
+        
 
         # puntos de fin
         self.constructor.set_finish_point("node_a2_promptNoValido")
-        self.constructor.set_finish_point("node_a9_generarCuestionario")
+        self.constructor.set_finish_point("node_a6_agenteDeChatbot")
+        self.constructor.set_finish_point("node_a7_agenteDeResumen")
 
         self.grafo = self.constructor.compile()
 

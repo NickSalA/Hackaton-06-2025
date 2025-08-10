@@ -69,44 +69,53 @@ def leerContenidoDeDocumento(rutaArchivo):
 
 
 # Obtiene los chunks desde un texto leído
-def obtenerChunks(contenido: str = "", leccion: str = ""):
+def obtenerChunks(contenido: str = ""):
+    # Creamos el documento con el texto que hemos extraido
     documento: list[Document] = [Document(page_content=contenido)]
+
+    # Definimos cómo se crearán los chunks del texto
     cortadorDeTexto = CharacterTextSplitter(
-        separator="\n",
-        chunk_size=1000,
-        chunk_overlap=100,
+        separator="\n",  # Enter
+        chunk_size=1000,  # Tamaño de cada fragmento
+        chunk_overlap=100,  # Superposición entre fragmentos
     )
 
+    # Creamos los chunks
     chunks = cortadorDeTexto.split_documents(documento)
+
+    # Información del documento que se almacena
     chunksConIdentificadores = []
 
+    # Iteramos los chunks para darle la estructura
     for chunk in chunks:
-        estructuraDeChunk = {
-            "id": str(uuid.uuid4()),
-            "content": chunk.page_content,
-            "leccion": leccion  # se añade la lección
-        }
+
+        # Definimos la estructura del chunk que insertaremos con su identificador
+        estructuraDeChunk = {"id": str(uuid.uuid4()), "content": chunk.page_content}
+
+        # Lo agregamos al array
         chunksConIdentificadores.append(estructuraDeChunk)
+
     return chunksConIdentificadores
 
 
 # Carga un archivo en una base de conocimiento
-def cargarArchivo(rutaDeArchivo: str, nombreDeBaseDeConocimiento: str):
+def cargarArchivo(rutaDeArchivo=None, nombreDeBaseDeConocimiento: str = ""):
+    # Leemos el contenido del archivo
     contenido = leerContenidoDeDocumento(rutaDeArchivo)
 
-    # Extraer lección del nombre de la carpeta contenedora
-    # p.ej. /data/leccion1/archivo.pdf → leccion = "leccion1"
-    nombre_archivo = os.path.basename(rutaDeArchivo)
-    leccion = nombre_archivo.split("_")[0]
+    # Creamos los chunks
+    chunks = obtenerChunks(contenido)
 
-    chunks = obtenerChunks(contenido, leccion=leccion)
-
+    # Nos conectamos a la base de conocimiento
     baseDeConocimiento = SearchClient(
-        f"https://{key('CONF_AZURE_SEARCH_SERVICE_NAME')}.search.windows.net",
+        f"https://{key("CONF_AZURE_SEARCH_SERVICE_NAME")}.search.windows.net",
         nombreDeBaseDeConocimiento,
-        AzureKeyCredential(key('CONF_AZURE_SEARCH_KEY')),
+        AzureKeyCredential(key("CONF_AZURE_SEARCH_KEY")),
     )
+
+    # Insertamos los chunks en la base de conocimiento
     resultadosDeInserciones = baseDeConocimiento.upload_documents(chunks)
+
     return resultadosDeInserciones
 
 

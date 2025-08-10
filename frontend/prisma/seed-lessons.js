@@ -3,7 +3,7 @@ const prisma = new PrismaClient();
 
 const lessons = [
   {
-    id: "fundamentos",
+    id: "leccion1",
     title: "Prompt Engineering Fundamentals",
     description:
       "Basic concepts and essential principles of prompt engineering.",

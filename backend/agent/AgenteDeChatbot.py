@@ -40,7 +40,7 @@ class AgenteDeChatbot:
         respuesta = ""
 
         # Lógica dinámica: decide qué metodo de envío usar
-        if base and self.basesDeConocimiento is not None:
+        if self.basesDeConocimiento is not None:
             print("--- AgenteDeChatbot: Usando la Base de Conocimientos ---")
             respuesta = enviarMensajeEnChatConBaseDeConocimiento(
                 chat=self.chat_con_kb, mensaje=prompt
